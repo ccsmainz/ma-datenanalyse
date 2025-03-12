@@ -37,6 +37,7 @@ jobs:
             any::tidyverse
             any::styler
             any::report
+            any::see
             any::lavaan
             any::lme4
             any::psych
