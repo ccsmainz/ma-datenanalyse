@@ -33,6 +33,7 @@ jobs:
             any::knitr
             any::rmarkdown
             any::quarto
+            any::zip
             any::tidyverse
             any::styler
             any::report
