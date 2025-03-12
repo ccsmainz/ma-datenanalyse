@@ -85,14 +85,14 @@ In unserem Fall zeigt sich, dass sich die Experimentalgruppen statistisch signif
 
 Um zu ermitteln, welche Gruppen sich signifikant voneinander unterscheiden, wird mithilfe von paarweisen Vergleichen und einer Alphafehler-Korrektur vorgegangen. In diesem Fall wird der Bonferroni-Korrekturansatz verwendet, der das Risiko von falsch positiven Ergebnissen verringert.
 
-Mit der Funktion `marginaleffects::avg_comparisons()` werden paarweise Vergleiche zwischen den Gruppen der Variable `Placementhäufigkeit` durchgeführt. Die Funktion nimmt das zuvor erstellte ANOVA-Modell als Grundlage, und durch die Option `p_adjust = "bonferroni"` wird sichergestellt, dass die p-Werte entsprechend angepasst werden, um den kumulierten Fehler durch mehrere Tests zu kontrollieren. Die Ergebnisse der paarweisen Vergleiche werden in einem übersichtlichen Format mithilfe von `as_tibble()` dargestellt.
+Mit der Funktion `marginaleffects::avg_comparisons()` werden paarweise Vergleiche zwischen den Gruppen der Variable `Placementhäufigkeit` durchgeführt. Die Funktion nimmt das zuvor erstellte ANOVA-Modell als Grundlage für die Berechnung. Durch die Funktion `hypotheses()` mit dem `multcomp`-Argument wird sichergestellt, dass die p-Werte entsprechend dem Verfahren nach Bonferroni korrigiert werden, um den kumulierten Fehler durch mehrere Tests zu kontrollieren. Die Ergebnisse der paarweisen Vergleiche werden in einem übersichtlichen Format mithilfe von `as_tibble()` dargestellt.
 
 ```{r}
 results_aov_pp |>
   marginaleffects::avg_comparisons(
-    variables = list(Placementhäufigkeit = "pairwise"),
-    p_adjust = "bonferroni"
+    variables = list(Placementhäufigkeit = "pairwise")
   ) |>
+  hypotheses(multcomp = "bonferroni") |> 
   as_tibble()
 ```
 
