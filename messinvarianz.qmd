@@ -1,0 +1,143 @@
+# Messinvarianz
+
+::: callout-tip
+### Quelle
+
+@schnauber2017
+
+[Variablenübersicht](https://stats.ifp.uni-mainz.de/ba-datenanalyse/data/variablenuebersicht_gewohnheiten.pdf)
+
+:::
+
+## Pakete und Daten
+
+Wir laden zunächst die notwendigen R-Pakete. Für die konfirmatorische Faktorenanalyse benötigen wir das  `lavaan`-Paket.
+Wie immer laden wir außerdem `tidyverse` und `report`.
+
+```{r}
+library(lavaan)
+library(tidyverse)
+library(report)
+```
+
+Für die konfirmatorische Faktorenanalyse nutzen wir wieder den Excel-Datensatz `gewohnheiten.xlsx`. Wir wählen diesmal nur die Unterdimension Wiederholung bei der TV-Gewohnheitsvariable.
+
+```{r}
+d_habit <- readxl::read_excel("data/gewohnheiten.xlsx")
+d_habit |>
+  select(starts_with("f_srhi_r"))
+```
+
+Zunächst schätzen wir eine konfirmatorische Faktorenanalyse für den SRHI-R, wobei wir nur auf die Ladungsstruktur achten. Das Modell ist mit 3 Indikatoren gerade identifiziert, d.h. es gibt keine Freiheitsgrade und daher auch keinen Modellfit. 
+
+```{r}
+srhi_model <- "
+   f_srhi =~ f_srhi_r1 + f_srhi_r2 + f_srhi_r3
+"
+cfa_basic <- cfa(srhi_model, data = d_habit)
+summary(cfa_basic, standardized = TRUE)
+```
+
+## Parameter-Gleichsetzung
+
+### Kongenerisches Modell 
+
+Wir beginnen mit dem kongerischen Modell, in dem alle Ladungen frei geschätzt werden.  Normalerweise wird immer die Ladung des ersten Indikators nicht geschätzt, sondern auf 1 fixiert, um das Modell zu identifizieren. Die Modellidentifikation erreichen wir jetzt, indem stattdessen die Varianz der latenten Variable auf 1 gesetzt wird (mit `std.lv = TRUE`). Dies ermöglicht uns, alle Faktorladungen im kongenerischen Modell frei zu schätzen und anschließend im tau-äquivalenten Modell alle 3 Ladungen gleichzusetzen.
+
+```{r}
+srhi_model_con <- "
+   f_srhi =~ f_srhi_r1 + f_srhi_r2 + f_srhi_r3
+"
+cfa_con <- cfa(srhi_model_con, data = d_habit, std.lv = TRUE)
+summary(cfa_con, standardized = TRUE)
+```
+
+Die standardisierten Ladungen sehen schon einmal gut aus, mit Werten > .80.  Wir sehen auch, dass die unstandardisierten Ladungen fast gleich groß sind.
+
+### Tau-äquivalentes Modell 
+
+Angesichts der gleich großen Ladungen können wir ein sog. tau-äquivalentes Modell schätzen. Dies impliziert, dass alle (unstandardisierten) Faktorladungen gleich sind - alle Indikatoren sind also gleich valide. Ein tau-äquivalentes Modell hat den Vorteil, dass es viel sparsamer ist, da statt 3 nur eine einzige Faktorladung geschätzt werden muss. Wir sparen 2 Freiheitsgrade und erhalten daher dann selbst für einen Faktor mit 3 Items Modellgütemaße. Die Gleichsetzung der Ladungen lässt sich in `lavaan` leicht realisieren, in dem dasselbe Koeffizientenlabel für die Pfade verwendet wird. Die Art, Labels zu vergeben, hatten wir bereits bei der Mediationsanalyse kennengelernt (a und b-Pfade). Konventionell werden Ladungen mit dem griechischen Lambda bezeichnet, so dass wir hier jede Ladung entsprechend labeln. 
+
+```{r}
+srhi_model_tau <- "
+   f_srhi =~ lambda*f_srhi_r1 + lambda*f_srhi_r2 + lambda*f_srhi_r3
+"
+cfa_tau <- cfa(srhi_model_tau, data = d_habit, std.lv = TRUE)
+summary(cfa_tau, fit.measures = TRUE, standardized = TRUE)
+```
+
+Wir erkennen zunächst an den Faktorladungen unter *Latent Variables*, dass die Gleichsetzung funktioniert hat. Zudem können wir am niedrigen (fast nicht-signfikanten) Chi-Quadrat-Wert und an den anderen Modellgütemaßen erkennen, dass das tau-äquivalente Modell  gut zu den empirischen Daten passt.
+
+### Modellvergleich
+
+Die Frage ist nun, ob die Gleichsetzung der Ladungen die Modellgüte signifikant verschlechtert hat  - der absolute Chi-Quadrat-Wert kann mit zunehmenden Freiheitsgraden nur steigen. Dies können wir mit einem Chi-Quadrat-Differenztest prüfen, bei dem das kongenerische (Ladungen frei geschätzt) mit dem tau-äquivalenten Modell (alle Ladungen gleich) verglichen wird. 
+
+Für den Modellvergleich verwenden wir wie immer die `anova()`-Funktion, die wir bereits vielfach gesehen haben.
+
+```{r}
+anova(cfa_con, cfa_tau)
+```
+
+Wir sehen, dass das tau-äquivalente Modell signifikant schlechteren Fit hat als das kongenerische, auch wenn die Modellgüte bei beiden Modellen noch sehr gut ist. Es bleibt unsere Entscheidung, mit welchem Modell wir weiterarbeiten. Wir bleiben vorerst beim kongenerischen Modell.
+
+
+## Invarianztests über Gruppen
+
+Bei der Prüfung von Messinvarianz über Gruppen (oder über Messzeitpunkte) geht es um die Frage, ob die Messung in den Gruppen bzw. über die Zeit so weit konsistent ist, dass Unterschiede auf tatsächliche Differenzen in der latenten Variable zurückzuführen sind und nicht auf unterschiedliche Messung. Technisch wird das erreicht, indem wir immer stärkere Gleichsetzungs-Constraints spezifizieren und schauen, ob die Modelle dadurch signifikant schlechter werden. Wir schätzen also schrittweise immer strengere Modelle und prüfen mit Differenztests, ob die Gleichsetzungen das Modell verschlechtern. Wenn sie das tun, wissen wir, dass es Unterschiede in der Messung zwischen den Gruppen gibt und wir daher diese nur schwer bzw. gar nicht vergleichen dürfen.
+
+### Konfigurale Invarianz
+
+Wir vergleichen die Messinvarianz der Einfachheit halber zwischen Männern und Frauen, also mit der Gruppenvariable `group = "p_2"` im CFA-Aufruf.
+Zunächst schätzen wir das Grundmodell ohne Constraints. Wenn schon dieses nicht passt, heißt das, die faktorielle Struktur ist in den Gruppen schon fundamental unterschiedlich (etwa zweifaktoriell bei Männern, einfaktoriell bei Frauen o.ä.). Da unser Modell mit 3 Indikatoren allerdings, wie oben beschrieben, nur gerade identifiziert ist, passt es automatisch, d.h. wir erhalten gar keinen Modellfit, sondern nur Schätzungen für die Ladungen der Items.
+
+
+```{r}
+cfa_config <- cfa(srhi_model, data = d_habit, group = "p_2")
+summary(cfa_config, fit.measures = TRUE, standardized = TRUE)
+```
+
+Der Output für die Parameterschätzer ist getrennt für Männer und Frauen, und wir erkennen, dass in diesem Modell Ladungen, Intercepts und Varianzen pro Geschlecht frei geschätzt werden. 
+
+### Metrische Invarianz 
+
+Als metrische Invarianz (weak invariance) bezeichnet man das Modell, in dem alle Ladungen gleichgesetzt werden. Will man (z.B. im Rahmen einer Moderationshypothese) vergleichen, ob der Zusammenhang zwischen TV-Nutzung und Gewohnheitsstärke bei Männern und Frauen gleich ist, muss zumindest diese metrische Invarianz gewährleistet sein. Wir könnten die Gleichsetzung einzeln im Modell spezifizieren (s.o.), allerdings gibt es in Lavaan eine fertige Lösung über das `group.equal` Funktionsargument. Hier können wir pauschal festlegen, das alle Ladungen gleichgesetzt werden sollen. Das funktioniert, solange wir keine partiellen Gleichsetzungen wollen (also einzelne Ladungen frei schätzen). 
+
+```{r}
+cfa_metric <- cfa(srhi_model,
+  data = d_habit, group = "p_2",
+  group.equal = c("loadings")
+)
+summary(cfa_metric, fit.measures = TRUE, standardized = TRUE)
+```
+
+Wir können bei den Parameterschätzern erkennen, dass die (unstandardisierten) Ladungen bei Item 2 und 3 gleichgesetzt sind, die Ladung 1 war ohnehin wie immer auf 1 fixiert. Durch die Gleichsetzung haben wir Freiheitsgrade gewonnen und erhalten daher nun auch einen (sehr guten) Modellfit mit einem nicht-signifikanten Chi-Quadrat-Wert. Dies spricht schon dafür, dass metrische Invarianz vorliegt. Wir prüfen dies noch einmal formal:
+
+Modellvergleich konfigurale vs. metrische Invarianz
+
+```{r}
+anova(cfa_config, cfa_metric)
+```
+In der Tat hat sich trotz der Gleichsetzung der SRHI-R-Faktorladungen bei Männern und Frauen die Modellgüte nicht signifikant verschlechtert, so dass wir davon ausgehen können, alle Items sind gleich valide Indikatoren der Wiederholungsdimension von TV-Gewohnheitsstärke bei Frauen und Männern. 
+
+### Skalare Invarianz 
+
+Wollen wir die Mittelwerte der Gewohnheitsstärke zwischen Männern und Frauen vergleichen (etwa per t-Test der Mittelwert- oder Factorscores), muss die sog. skalare Invarianz (strong invariance) gewährleistet sein, bei der Ladungen und Intercepts gleichgesetzt werden. Die Intercepts beschreiben das Verhältnis von latentem Wert und den eigentlichen Scores der einzelnen Items. Wenn z.B. weibliche Teilnehmerinnen mit derselben wahren Gewohnheitsstärke tendenziell immer etwas niedrigere Item-Wert haben als männliche Teilnehmer, etwa weil sie *regelmäßig* oder *Routine* anders verstehen, würden wir beim Vergleich der Mittelwert zu falschen Schlüssen kommen.  Wir setzen also im nächsten Schritt Ladungen und Intercepts über die Gruppen gleich und vergleichen direkt die Modelle.
+
+```{r}
+cfa_scalar <- cfa(srhi_model,
+  data = d_habit, group = "p_2",
+  group.equal = c("loadings", "intercepts")
+)
+summary(cfa_scalar, fit.measures = TRUE, standardized = TRUE)
+```
+
+```{r}
+anova(cfa_metric, cfa_scalar)
+```
+
+Im Vergleich zum Modell mit metrischer Invarianz hat die Gleichsetzung der Intercepts nicht zu einem signfikant schlechterem Modellfit geführt. Wir dürfen also die Mittelwerte im SRHI-R zwischen Männern und Frauen vergleichen. Das können wir entweder über den t-Test der Mittelwertscores, die wir erst berechnen müssten, tun oder direkt im Modelloutput. Etwas versteckt unter Intercepts bei den Männern finden wir eine zusätzliche Zeile `f_srhi`, die es bei den Frauen nicht gibt. Dies ist direkt der Unterschied zwischen den Frauen als Referenzgruppe und den Männern. Der Wert von 0.011 (SE = .073) und einem p-Wert von .88 zeigt, dass es keinen signifikanten Unterschied zwischen Frauen und Männern im F-SRHI-R gibt.
+
+
+## Hausaufgabe
+
+Prüfen Sie die Messinvarianz nach Geschlecht für den SRHI-A bei der TV-Nutzung. Dürfen wir Männer und Frauen in ihrem F-SRHI-A vergleichen, und wenn ja, wie fällt der Vergleich aus?

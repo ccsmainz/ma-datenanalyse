@@ -1,0 +1,6 @@
+# Glossar {.unnumbered}
+
+```{r, purl = F, echo = F, cache = F}
+source("glossar.R")
+glossar(".*")
+```

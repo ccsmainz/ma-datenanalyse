@@ -1,0 +1,273 @@
+# Mediationsanalyse und Pfadmodelle
+
+::: callout-tip
+### Quelle
+
+@beckert2020
+:::
+
+## Pakete und Daten
+
+Wir laden zunächst die notwendigen R-Pakete.
+Für Mediationsanalysen benötigen wir entweder das `mediation`- oder das `lavaan`-Paket, hier laden wir beide.
+Wie immer laden wir `tidyverse` und `report`.
+
+```{r}
+library(mediation)
+library(lavaan)
+
+library(tidyverse)
+library(report)
+theme_set(theme_minimal())
+```
+
+Für die einfache Mediationsanalyse nutzen wir den SPSS_Datensatz `zeitungsnutzung_mediation.sav`, der nur 4 Spalten enhält: die laufende Probandennummer, politisches Wissen, politisches Interesse und Zeitungsnutzungsdauer.
+
+```{r}
+d_zeitung <- haven::read_sav("data/zeitungsnutzung_mediation.sav") |>
+  haven::zap_labels()
+d_zeitung
+```
+
+Für die multiple Mediationsanalyse verwenden wir den Experiment-Datensatz `influencer_mediation.sav`, der ebenfalls 4 Variablen enthält: die Versuchsbedingung Werbekennzeichnung (dichotom), sowie die beiden Variablen zum Persuasionswissen (Täuschungsabsicht und Überzeugungsabsicht) sowie die Reaktanz.
+
+```{r}
+d_influencer <- haven::read_sav("data/influencer_mediation.sav") |>
+  haven::zap_labels()
+d_influencer
+```
+
+## Regressionsbasierte Analyse
+
+### Bivariater Zusammenhang
+
+Zunächst machen wir uns mit den relevanten Variablen vertraut und nutzen dafür die `report_table()`-Funktion.
+
+```{r}
+d_zeitung |>
+  select(Zeitungsnutzungsdauer, PolWiss, PolInt) |>
+  report::report_table()
+```
+
+Als nächstes schätzen wir ein einfaches bivariates Regressionmodell, um den (totalen) Effekt von Zeitungsnutzungsdauer auf pol.
+Wissen zu testen.
+
+```{r}
+model_total <- lm(PolWiss ~ Zeitungsnutzungsdauer, data = d_zeitung)
+report::report_table(model_total)
+```
+
+Der Zusammenhang ist positiv und statistisch signifikant, d.h.
+eine stärkere Zeitungsnutzung hängt mit mehr politischem Wissen zusammen.
+
+### Mediationanalyse mit Regressionen
+
+Wir gehen im Folgenden davon aus, dass der (positive) Effekt des Zeitungslesens auf pol.
+Wissen zumindest teilweise vom pol.
+Interesse mediiert wird.
+Anders formuliert: Zeitunglesen sollte politisches Interesse steigern, das wiederum zum mehr politischem Wissen führt (z.B. weil relevante Informationen besser erinnert werden).
+
+![Einfaches Mediationsmodell](images/simplemed.png)
+
+Um die in der Abbildung dargestellte Mediationshypothese mit politischem Interesse als Mediatorvariable zu prüfen, gibt es verschiedene Möglichkeiten:
+
+1.  Wir schätzen die beiden Regressionsmodelle einzeln mit der bekannten `lm`-Funktion und berechnen dann den indirekten Effekt samt Konfidenzintervall mit dem `mediation`-Paket.
+2.  Wir schätzen ein lineares Pfad- oder Strukturgleichungsmodell, in dem alle dargestellten Zusammenhänge simultan geschätzt werden. Hierfür benötigen wir das `lavaan`-Paket.
+
+Beide Varianten kommen zu (fast) identischen Ergebnissen, haben aber spezifische Vor- und Nachteile.
+Zunächst schätzen wir die beiden Teilmodelle, die per Konvention als *a* bzw.
+*bc*-Regressionen bezeichnet werden.
+
+```{r}
+model_a <- lm(PolInt ~ Zeitungsnutzungsdauer, data = d_zeitung)
+report::report_table(model_a)
+```
+
+Es gibt einen positiven, stat.
+signifikanten Zusammenhang zwischen Zeitungsnutzung und pol.
+Interesse, d.h.
+der $a$-Pfad ist signifikant.
+
+```{r}
+model_bc <- lm(PolWiss ~ Zeitungsnutzungsdauer + PolInt, data = d_zeitung)
+report::report_table(model_bc)
+```
+
+Es gibt außerdem einen positiven, statistisch signifikanten Zusammenhang zwischen politischem Interesse und politischem Wissen, der $b$-Pfad, während der verbleibende direkte Effekt $c'$ nicht statistisch signifikant ist.
+
+Da $a$ und $b$-Pfade signifikant sind (*joint significance*), können wir die Mediationshyptothese annehmen.
+In der Praxis wird darüber hinaus jedoch häufig der indirekte Effekt $ab$ selbst noch quantifiziert, d.h das Produkt aus $a$ und $b$-Koeffizienten.
+
+### Indirekter Effekt
+
+Während man die Punktschätzer für $ab$ einfach ausmultiplizieren kann, ist die inferenzstatisches Prüfung bzw.
+Berechnung des Konfidenzintervalls nicht ganz so leicht.
+Hayes und Scharkow (2013) listen eine Reihe von Verfahren auf, von denen Bootstrapping mit Perzentil-Intervall empfohlen wird.
+Dies könnte man manuell in R schätzen, es gibt aber mit der `mediate`-Funktion eine komfortablere Lösung.
+Als Funktionsargumente werden, das $a$-Regressionsmodell, das $bc$-Regressionsmodell, der Name der $X$-Variable und der Name der Mediatorvariable $M$ übergeben.
+Über `boot = TRUE` fordern wir ein Bootstrap-basiertes Konfidenzintervall an.
+Das Ergebnis des Aufrufs wird dann über `summary()` zusammengefasst.
+
+```{r}
+mediation::mediate(model_a, model_bc,
+  treat = "Zeitungsnutzungsdauer",
+  mediator = "PolInt",
+  boot = TRUE
+) |>
+  summary()
+```
+
+Der indirekte Effekt (ACME) ist positiv, das 95%-Konfidenzintervall enthält nicht die Null, d.h.
+der Effekt ist statistisch signfikant.
+Zusätzlich werden der direkte Effekt $c'$ (ADE), der totale Effekt (siehe unser bivariate Regression oben) sowie das Verhältnis von indirektem zu totalem Effekt (Prop. Mediated) ausgegeben.
+Insgesamt zeigt sich auch hier, dass wir die Mediationshypothese annehmen können.
+
+## Pfadanalyse
+
+Alternativ zu Einzelregressionen kann man über Strukturgleichungsmodelle (fast) beliebig komplexe Zusammenhänge simultan schätzen.
+Hierfür verwenden wir das `lavaan`-Paket, das eine recht einfache Spezifikationssyntax hat.
+
+### Pfadmodelle
+
+Die Schätzung von Pfadmodellen mit `lavaan` besteht immer aus zwei Teilschritten: Modellspezifikation und Modellschätzung.
+Die Spezifikation besteht darin, dass wir in einem `character`-Objekt einen oder mehrere Pfade im Modell beschreiben.
+In unserem Fall sind es Regressionsmodelle, die exakt die gleiche Form haben, wie die Formel im `lm`-Aufruf.
+Wir schreiben beide Regressionsformeln nacheinander in das Modell.
+
+```{r}
+simple_model <- "
+  PolInt ~ Zeitungsnutzungsdauer
+  PolWiss ~ PolInt + Zeitungsnutzungsdauer
+"
+```
+
+Nach der Spezifikation geschieht erst einmal nichts, da wir nur ein Objekt mit etwas Text angelegt haben.
+Geschätzt wird das Modell erst mit dem Aufruf der `sem()`-Funktion.
+Diese bekommt als erstes Argument unser spezifiziertes Modell, als zweites die Daten, mit denen das Modell geschätz werden sollen.
+Über die `summary()`-Funktion bekommen wir eine sehr ausführliche Zusammenfassung der Schätzung.
+Entscheidend ist zunächst, dass das Modell erfolgreich geschätzt wurde (Zeile 1) sowie die Schätzer für die Regressionskoeffizienten.
+Diese entsprechen exakt den mit `lm()` geschätzten Koeffizienten von oben.
+
+```{r}
+results_simple <- lavaan::sem(model = simple_model, data = d_zeitung)
+summary(results_simple, standardized = TRUE, rsquare = TRUE)
+```
+
+### Einfache Mediation
+
+Für die Mediationsanalyse machen wir uns die Möglichkeit zunutze, in der Modellspezifikation bestimmte Parameter (oder Pfade) benennen zu können, etwa den $a$, $b$ und $c'$ Parameter aus dem Mediationsmodell.
+
+Im unteren Teil der Spezifikation definieren wir dann den indirekten ($a * b$) und totalen Effekt ($ab + c$) aus den benannten Modellparametern.
+Diese werden bei der Schätzung ebenfalls berücksichtigt, inklusive Standardfehler bzw.
+Konfidenzintervallen.
+Wir bekommen also alle relevanten Modellergebnisse auf einmal geliefert.
+
+```{r}
+med_model <- "
+  # Regressionen
+  PolInt ~ a * Zeitungsnutzungsdauer
+  PolWiss ~ b * PolInt + c * Zeitungsnutzungsdauer
+
+  # abgeleitete Parameter
+  indirect := a * b
+  total := indirect + c
+  prop_mediated := indirect / total
+"
+```
+
+Der Modellaufruf ist wie im obigen Beispiel, jedoch wollen wir anstelle (falscher) asymptotischer Standardfehler und Konfidenzintervalle wiederum Bootstrap-basierte erhalten.
+
+```{r}
+results_med <- lavaan::sem(
+  model = med_model, data = d_zeitung,
+  se = "bootstrap", bootstrap = 1000
+)
+summary(results_med, standardized = TRUE, rsquare = TRUE)
+```
+
+Da uns nur die Regressions- und definierten Koeffizienten interessieren, nutzen wir die `report_table()`-Funktion und filtern alle anderen Modellparameter heraus.
+
+```{r}
+report::report_table(results_med) |>
+  filter(Coefficient != "")
+```
+
+Jetzt erhalten wir alle relevanten Modellergebnisse in einem Schritt, mit fast identischen Ergebnissen im Vergleich zu den einzelnen Regressionen oben.
+
+### Multiple Mediation
+
+Als zweites Beispiel schätzen wir ein Mediationsmodell zum Einfluss von Werbekennzeichnungen bei Influencern.
+Zunächst machen wir uns mit den relevanten Variablen vertraut, bevor wir das Pfadmodell schätzen.
+
+```{r}
+d_influencer |>
+  report::report_table()
+```
+
+Pfadmodelle haben den Vorteil, dass sie (fast) beliebig erweiterbar sind, d.h.
+wir können auch komplexere Modelle schätzen, etwa eine parallele multiple Mediation, wie in der Abbildung dargestellt.
+
+![Paralleles Mediationsmodell](images/multmed.png)
+
+Das multiple Mediationsmodell hat jeweils zwei $a$ und $b$-Pfade (d.h. drei Regressionsgleichungen).
+Üblicherweise wird auch der Zusammenhang zwischen den beiden Mediatorvariablen geschätzt (mit `~~` spezifiziert), weil es plausibel ist, dass diese auch zusammenhängen.
+Anschließend werden zwei indirekte und ein totaler Effekt definiert und das Modell dann geschätzt.
+
+```{r}
+multmed_model <- "
+  # Regressionen
+  PW_UEBERZEUGEN ~ a1 * Werbekennzeichnung
+  PW_TAEUSCHEN ~ a2 * Werbekennzeichnung
+  Reaktanz ~ b1 * PW_UEBERZEUGEN + b2 * PW_TAEUSCHEN + c * Werbekennzeichnung
+
+  # Korrelation der Mediatoren
+  PW_UEBERZEUGEN ~~ PW_TAEUSCHEN
+
+  # abgeleitete Parameter
+  indirect1 := a1 * b1
+  indirect2 := a2 * b2
+  total := indirect1 + indirect2  + c
+"
+
+results_multmed <- lavaan::sem(
+  model = multmed_model, data = d_influencer,
+  se = "bootstrap", bootstrap = 1000
+)
+summary(results_multmed, standardized = TRUE, rsquare = TRUE)
+```
+
+Der Output ist lediglich etwas länger als zuvor, aber die relevanten Koeffizienten finden sich an denselben Stellen.
+Auch hier können wir den Output auf die notwendigen Angaben filtern.
+
+```{r}
+report_table(results_multmed) |>
+  filter(Coefficient != "")
+```
+
+Beide indirekten Effekte sind statistisch signifikant, aber gegenläufig, was häufig als sog.
+Suppressionseffekt interpretiert wird.
+
+::: callout-important
+## Gibt es überhaupt einen Effekt?
+
+Achtung, bei genauerer Betrachtung des totalen Effekts stellen wir fest, dass dieser gar nicht statistisch signifikant ist, d.h.
+wir haben *keinen* Beleg dafür, dass die Werbekennzeichnung überhaupt die Reaktanz der Proband:innen beeinflusst hat.
+Dies sollte auch und erst recht bei der kausalen (Über-) Interpretation komplexer Mediationsmodelle berücksichtigt werden, vor allem, wenn die Mediatoren nicht experimentell manipuliert wurden.
+:::
+
+## Glossar
+
+```{r, purl = F, echo = F}
+source("glossar.R")
+
+glossar("mediation::mediate|lavaan::sem")
+```
+
+## Hausaufgabe
+
+Gegeben sei folgenden Hypothese:
+
+> „Je mehr Pornografie eine Person konsumiert, desto eher ist sie untreu.
+> Dieser Zusammenhang wird vom Commitment für die Beziehung mediiert: Je höher der Pornografiekonsum ausfällt, desto geringer ist das Committment, und je geringer das Committment ist, desto häufiger ist einer Person untreu.»
+
+Testen Sie diese Mediationshypothese mit dem Datensatz `lambert.sav`.

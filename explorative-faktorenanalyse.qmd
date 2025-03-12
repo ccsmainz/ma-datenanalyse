@@ -1,0 +1,276 @@
+# Explorative Faktorenanalyse
+
+::: callout-tip
+### Quelle
+
+@schnauber2017
+
+[Variablenübersicht](https://stats.ifp.uni-mainz.de/ba-datenanalyse/data/variablenuebersicht_gewohnheiten.pdf)
+:::
+
+## Pakete und Daten
+
+Wir laden zunächst die notwendigen R-Pakete. Für die explorative Faktorenanalyse benötigen wir das `psych`- Paket. Wie immer laden wir außerdem `tidyverse` und `report`.
+
+```{r}
+library(psych)
+library(tidyverse)
+library(report)
+```
+
+Für die explorative Faktorenanalyse nutzen wir den Excel-Datensatz `gewohnheiten.xlsx`. Dieser enthält u.a. Skalen zur Messung der Gewohnheitsstärke bei der Nutzung von Fernsehen, Computer und Smartphone.
+
+```{r}
+d_habit <- readxl::read_excel("data/gewohnheiten.xlsx")
+d_habit
+```
+
+## Überprüfung der Items
+
+Zunächst machen wir uns mit den relevanten Variablen vertraut und nutzen dafür die `report_table()`-Funktion. Die Skala für die Gewohnheitsstärke bei der Computer-Nutzung ist in den elf Variablen `c_srhi_X` enthalten, die wir für die weiteren Schnitte ausschneiden und in einem neuen Datensatz speichern.
+
+```{r}
+d_efa <- d_habit |>
+  select(c_srhi_r1:c_srhi_c2)
+
+d_efa |>
+  report::report_table()
+```
+
+Grundsätzlich sollten die Items, die wir für eine Faktoranalyse verwenden wollen, ein metrisches Skalenniveau aufweisen (d.h. mindestens intervallskaliert) oder dichotom sein. Es sollten außerdem mindestens 100 Fälle sein (eher mehr) bzw. insgesamt mindestens 10x mehr Personen als Items, die in die Analyse einbezogen werden sollen (Daumenregel). In unserem Datensatz erfüllen wir diese Mindestanzahl locker. Die Items sind alle auf einer 5-er Skala erhoben und wenigstens quasi-metrisch.
+
+### Korrelationsmatrix und Bartlett-Test
+
+Anschließend überprüfen wir, ob die Items überhaupt für eine explorative Faktorenanalyse geeignet sind, d.h. ob es gemeinsame Varianz gibt. Die Korrelationsmatrix zeigt, ob und wie die einzelnen Variablen miteinander zusammenhängen. Die Items, die auf einen Faktor laden, müssen zwangsweise miteinander korrelieren, daher können wir durch Inspektion der Korrelationsmatrix bereits einen ersten Eindruck gewinnen, ob eine oder mehrere Faktoren dahinterliegen könnten. Wir berücksichtigen nur die Befragten, die für alle 9 Variablen gültige Werte angegeben haben.
+
+```{r}
+d_efa |>
+  cor(use = "complete.obs") |>
+  round(2)
+```
+
+Wir sehen, dass es einige Items gibt, die relativ hoch miteinander korrelieren. Mit dem Bartlett-Test können wir diese visuelle Inspektion auch formalisieren. Er überprüft die Nullhypothese, dass die Stichprobe aus einer Population stammt, in der die Variablen unkorreliert sind. Dies ist ein relativ schwacher Test, da mit ausreichend großen Stichproben fast immer auch kleinere Inter-Item-Korrelationen statistisch signifikant sein werden.
+
+```{r}
+psych::cortest.bartlett(d_efa)
+```
+
+Der Bartlett-Test ist wie erwartet signifikant (p \< .001), d.h. die Items sind korreliert und die Voraussetzung für eine Faktorenanalyse erfüllt.
+
+### KMO-Wert
+
+Der KMO-wert (Kaiser-Meyer-Olkin-Wert) ist ein Maß für den Anteil der Varianz zwischen den Variablen, der vermutlich gemeinsame Varianz ist. D. h., der KMO-Wert gibt an, wie stark die Variablen zusammengehören und ob eine EFA sinnvoll ist. Der KMO-Wert kann Werte zwischen 0 und 1 annehmen. Je höher der KMO-Wert, desto besser eignen sich die Daten für eine Faktorenanalyse.
+
+Kaiser (1975) schlägt als Bewertung des KMO-Werts folgendes vor:
+
+≥ .90 = marvelous ("erstaunlich") ≥ .80 = meritorius ("verdienstvoll") ≥ .70 = middling ("ziemlich gut") ≥ .60 = mediocre ("mittelmäßig") ≥ .50 = miserable ("kläglich") \< .50 = unacceptable ("untragbar")
+
+```{r}
+psych::KMO(d_efa)
+```
+
+Wir erhalten eine KMO-Wert für alle Items (insgesamt) und für jedes einzelne Item. Da alle Items \> .70 (ziemlich gut) sind und auch der Gesamtwert \> .80 (verdienstvoll) ist, können wir darauf schließen, dass sich die Items gut für die Durchführung einer Faktorenanalyse eignen.
+
+## Explorative Faktorenanalyse
+
+### Extraktions-Methode {#extraktion}
+
+In der Literatur zur EFA werden in der Regel drei alternative Ansätze diskutiert:
+
+-   Hauptkomponentenanalyse (Principal component analysis, PCA)
+-   Hauptachsenanalyse (Principal axis factoring, PAF)
+-   Maximum-Likelihood-Faktoranalyse (ML)
+
+Die *Hauptkomponentenanalyse* wenden wir *ausschließlich* an, wenn unser Ziel eine Datenreduktion ist, d.h. wir eine größere Anzahl Items durch eine geringere Anzahl Komponenten ersetzen wollen und dabei aber deren Varianz möglichst maximal erhalten wollen.
+
+Die *Hauptachsenanalyse* oder *Maximum Likelihood Schätzung* verwenden wir, wenn latente Variablen identifiziert werden sollen, die für die Beantwortung der Items ausschlaggebend sind. Anders formuliert: Die Antworten auf die gemessenen Items lassen sich durch einen oder mehrere Faktoren erklären bzw. spiegeln die latenten Variablen wider (reflektives Messmodell). Dies ist in fast allen kommunikationswissenschaftlichen Anwendungen das Ziel, daher wählen wir die Hauptachsenanalyse.
+
+### Anzahl der Faktoren bestimmen
+
+Bevor wir eine EFA durchführen, müssen wir die optimale Anzahl von Faktoren bestimmen, die extrahiert werden sollen. Leider gibt es kein einheitliches Konzept oder Kriterium für die Extraktion von Faktoren (von einem einzigen Faktor bis jedes Item = ein Faktor ist alles möglich). Technisch gibt es immer so viele Faktoren wie Items, aber wir extrahieren nur die wichtigsten. Unsere Entscheidung sollte im Idealfall auf mehreren Kriterien beruhen, von denen die klare Interpretierbarkeit das wichtigste ist: Möglichst alle Items sollten nur zu einem Faktoren gehören (auf einen Faktor laden), was als Einfachstruktur bezeichnet wird, und jeder Faktor sollte sich in mehreren Items widerspiegeln (sonst wäre Item = Faktor, keine gemeinsame Varianz).
+
+Verfahren zur Bestimmung der Faktoranzahl sind:
+
+-   A-priori-Kriterium: Wir definieren eine Faktorenanzahl aufgrund theoretischer Überlegungen (dann sind wir aber schon fast bei der konfirmatorischen Faktorenanalyse)
+-   Parallel-Analyse: die empirische Faktorstruktur wird mit einer zufälligen Datenmatrix auf Basis derselben Variablenzahl verglichen
+-   Kaiser-Kriterium: Identifikation von Faktoren, deren Eigenwert \> 1 ist, da Faktoren unterhalb dieser Grenze weniger Varianz erklären als eine einzelne Variable
+
+Eine Parallel-Analyse führen wir mit der `fa.parallel()`-Funktion durch. Hier wählen wir aus, dass wir eine Faktorenanalyse (keine Hauptkomponentenanalyse) durchführen wollen verwenden dafür `fm = "pa"` (Principal Axis) zur Extraktion.
+
+```{r}
+psych::fa.parallel(d_efa, fa = "fa", fm = "pa")
+```
+
+Da es keine inferenzstatistischen Tests für die optimale Anzahl an Faktoren gibt, wird oft mit Hilfe eines Scree-Plots visuell inspiziert, wie viele Faktoren es geben könnte. Hierbei sucht man entweder nach dem Knick (Ellenbogen-Kriterium) oder dem Schnittpunkt für ein Kriteriumswert.
+
+Mit Hilfe der `scree()`-Funktion sehen wir, wie viele Faktoren einen Eigenwert \> 1 haben (Kaiser-Kriterium) und wo optisch der "Knick" ist.
+
+```{r}
+psych::scree(d_efa, pc = F)
+```
+
+Die Parallel-Analyse schlägt drei Faktoren vor, nach dem Kaiser-Kriterium und dem Scree-Plot ergeben sich jedoch zwei Faktoren. Dies zeigt ganz anschaulich, dass es bei explorativen Faktoranalysen häufig kein eindeutiges Ergebnis gibt. Wir entscheiden uns dafür, die Analyse mit drei Faktoren zu rechnen.
+
+### Durchführung der eigentlichen Faktoranalyse und Rotation
+
+Für die eigentliche explorative Faktorenanalyse nutzen wir die `fa()`-Funktion. Hier müssen wir die Anzahl der Faktoren, die Methode (pa = principal axis factoring) und die Art der Rotation unserer Matrix angeben.
+
+Rotationen minimieren die Komplexität der Faktorenladungen, um die Struktur einfacher zu interpretieren. Es gibt zwei Arten der Rotation:
+
+*Orthogonale Rotationen* erzwingen, dass die Faktoren unkorreliert sind, was aber häufig unrealistisch ist (wir nehmen ja an, dass die Items korrelieren und zu einem latenten Faktor gehören). Die Erzwingung der Unkorreliertheit macht es weniger wahrscheinlich, dass die Rotation eine Lösung mit einer einfachen Struktur ergibt. *Oblique Rotationen* erlauben es, dass die Faktoren miteinander korreliert sind. Dies führt häufig zu Lösungen mit einer einfacheren Struktur und steht im Einklang mit der Theorie.
+
+Wir empfehlen, zuerst eine oblique Rotation (z. B. 'oblimin') durchzuführen und die Korrelationen der Faktoren zu überprüfen. Korrelieren diese tatsächlich nicht, ist auch eine orthogonale Rotation angemessen.
+
+```{r}
+results_efa <- d_efa %>%
+  fa(
+    nfactors = 3,
+    fm = "pa",
+    rotate = "oblimin"
+  )
+
+# Output anpassen
+print(results_efa,
+  digits = 2, ## auf 2 Nachkommastellen runden
+  sort = TRUE ## Items zu den Faktoren sortieren
+)
+```
+
+Die Mustermatrix enthält die standardisierten Ladungen der einzelnen Items auf die jeweiligen Faktoren. Für die Übersichtlichkeit ist es häufig schöner, wenn geringe Faktorladungen nicht in der Matrix angezeigt werden. Dies erreichen wir mit `cut = .3`:
+
+```{r}
+print(results_efa,
+  digits = 2, ## auf 2 Nachkommastellen runden
+  cut = .3, ## Ladungen unter .3 nicht anzeigen
+  sort = TRUE
+) ## Items zu den Faktoren sortieren
+```
+
+Je stärker die Faktorladung (= Korrelation zwischen Variable und Faktor), desto stärker wird das Item bei der Interpretation des Faktors berücksichtigt (Hair et al., 1998, S. 111). Dabei ist eine Ladung von 0,30 das minimale Level (weshalb wir alles \< .30 nicht anzeigen), ab 0,50 ist die Ladung bedeutsam und ab 0,70 hoch. Wünschenswert ist, dass die Variablen auf einen Faktor hoch laden und auf die anderen Faktoren niedrig.
+
+Die Spalte „h2“ gibt den Anteil der Varianz an, der durch die Faktoren erklärt wird (Kommunalitäten). Die Spalte „u2“ steht für die Einzigartigkeit und ist einfach 1-h2. Die Spalte „com“ steht für den Hoffmannschen Komplexitätsindex. Er ist gleich 1, wenn ein Item nur auf einen Faktor lädt. Wir erhalten außerdem Tabellen für die erklärte Varianz und die Korrelationen zwischen den Faktoren und Informationen über die Modellanpassung.
+
+### Ausschluss von Variablen
+
+Beim Betrachten der Faktorladungen sollten wir immer überlegen ob es Items gibt, die wir ausschließen sollten. Ein Item (c_srhi_a4) lädt wesentlich weniger auf den zugehörigen Faktor (PA1) - betrachtet man die Itemformulierung, kann man sich auch denken, warum dieses Item so schlecht lädt ("Während ich den Computer einschalte, denke ich oft an ganz andere Dinge."). Das Item c_srhi_a4 beinhaltet eher Ablenkungsaspekte oder Multitasking und streng genommen nicht eine fehlende Bewusstheit der Nutzung. Wir schließen dieses Item jedoch zunächst nicht aus.
+
+Generell sollten Items ausgeschlossen werden, wenn
+
+-   sie zu niedrige Ladungen aufweisen
+-   sie auf zwei Faktoren hochladen (Daumenregel: weniger als .3 auseinander)
+-   sie alleine einen eigenen Faktor aufspannen
+-   die Kommunalität \< .50 ist.
+
+### Interpretation der Faktorenlösung
+
+Wir sehen, dass der erste Faktor (PA1) aus sechs Items, der zweite (PA2) aus drei Items und der dritte Faktor (PA3) aus zwei Items besteht. Betrachten wir die Items inhaltlich, sehen wir, dass die drei Faktoren verschiedene Dimensionen der Gewohnheit bei der Computernutzung darstellen: PA1 die fehlende Bewusstheit der Computernutzung, PA2 den Wiederholungscharakter der Computernutzung und PA3 die geringe Kontrollierbarkeit der Computernutzung.
+
+Wir können die Beziehungen und Ladungen zwischen den Items und den Faktoren auch grafisch darstellen:
+
+```{r}
+psych::fa.diagram(results_efa)
+```
+
+## Exkurs: Hauptkomponentenanalyse
+
+In Kapitel \[extraktion\] haben wir gelernt, dass wir in der Regel eine Hauptachsenanalyse durchführen, weil wir latente Variablen hinter den manifesten Variablen vermuten. Manchmal möchten wir jedoch eine große Menge an Variablen reduzieren und durch eine geringere Anzahl an Komponenten ersetzen. Hier kann die Hauptkomponentenanalyse sinnvoll sein.
+
+Grundsätzlich sind viele Schritte bei der Hauptkomponentenanalyse die Gleichen wie bei der Faktorenanalyse. Jedoch sollten wir eben von Komponenten und nicht von Faktoren sprechen. Ein zentraler Unterschied zur explorativen Faktorenanalyse ist, dass die Variablen nicht miteinander korrelieren müssen.
+
+Wir nutzen im Folgenden einen SPSS-Datensatz, der mögliche Funktionen von informeller Kommunikation in Organisationen enthält. In einer Literaturanalyse wurden neun Funktionen herausgearbeitet, deren Relevanz für Mitarbeitende mit Hilfe von je drei Items auf einer 5er-Skala erhoben wurde. Diese 27 Items sollen mit Hilfe einer Hauptkomponentenanalyse verdichtet werden.
+
+Wir machen uns zunächst wieder mit den relevanten Variablen vertraut und nutzen dafür die `report_table()`-Funktion. Die Items zu den Funktionen informeller Kommunikation ist in den 27 Variablen `F201_x` enthalten, die wir wieder für die weiteren Schritte ausschneiden und in einem neuen Datensatz speichern.
+
+```{r}
+d_informell <- haven::read_sav("data/InfKomm.sav") |>
+  haven::zap_labels()
+
+d_pca <- d_informell |>
+  select(F201_01:F201_52)
+
+d_pca |>
+  report::report_table()
+
+# F201_01: Informelle Kommunikation ist ein Mittel, mit dem ich Spannungen und Stress abbauen kann.
+# F201_02: Ich nutze informelle Kommunikation, um eine Pause zu machen und mich zu erholen.
+# F201_03: Informelle Kommunikation hilft mir, meinem Ärger Luft zu machen, wenn mich etwas stört.
+# F201_05: Informelle Kommunikation bietet mir Abwechslung vom Arbeitsalltag.
+# F201_07: Ich nutze informelle Kommunikation, um mich von der Arbeit abzulenken.
+# F201_08: Ich nutze informelle Kommunikation zur Unterhaltung.
+# F201_13: Durch informelle Kommunikation fühle ich mich mit meinen Kolleg:innen verbunden.
+# F201_15: Durch informelle Kommunikation fühle ich mich weniger einsam.
+# F201_16: Durch informelle Kommunikation fühle ich mich sozial zugehörig.
+# F201_17: Informelle Kommunikation hilft mir dabei, meine Kolleg:innen privat besser kennenzulernen.
+# F201_18: Durch informelle Kommunikation kann ich Freundschaften schließen.
+# F201_20: Informelle Kommunikation hilft mir dabei, Bekanntschaften zu knüpfen.
+# F201_25: Durch informelle Kommunikation erhalte ich Informationen, die mir helfen, meine Arbeit zu erledigen.
+# F201_26: Informelle Kommunikation liefert zusätzliche Informationen zu der formellen Kommunikation in der Organisation.
+# F201_27: Informelle Kommunikation informiert mich über aktuelle Ereignisse und bevorstehende Veränderungen im Unternehmen.
+# F201_29: Informelle Kommunikation hilft mir, mich persönlich in mein Team einzufinden.
+# F201_30: Durch informelle Kommunikation fühle ich mich der Organisation zugehörig.
+# F201_31: Durch informelle Kommunikation habe ich das Gefühl, dass ich ein geschätztes Mitglied der Organisation bin.
+# F201_41: Für mich ist die informelle Kommunikation eine Möglichkeit, berufliche Beziehungen zu meinen Kolleg:innen aufzubauen und zu pflegen.
+# F201_42: Informelle Kommunikation unterstützt mich dabei, ein berufliches Netzwerk aufzubauen.
+# F201_44: Informelle Kommunikation hilft mir und meinem Team zusammenzuwachsen.
+# F201_45: Informelle Kommunikation hilft dabei, den Arbeitsalltag im Team zu organisieren.
+# F201_47: Informelle Kommunikation erleichtert die Koordination und Planung von Teamarbeit.
+# F201_48: Durch informelle Kommunikation fällt es leichter, gemeinsam Probleme zu lösen.
+# F201_49: Informelle Kommunikation kann dabei helfen, die Organisationskultur gemeinsam zu entwickeln.
+# F201_51: Informelle Kommunikation hilft mir, die Organisation zu verstehen, einschließlich ihrer Mission, Vision, Werte, Überzeugungen und Ziele.
+# F201_52: Durch informelle Kommunikation entsteht ein positives Arbeitsklima.
+```
+
+Da die Variablen nicht korrelieren müssen, brauchen wir uns auch die Korrelationsmatrix nicht anzusehen und auch den Bartlett-Test sowie den KMO-Wert nicht zu berechnen (wir können es natürlich trotzdem tun).
+
+Bevor wir eine PCA durchführen, müssen wir auch hier wieder die optimale Anzahl von Komponenten bestimmen, die extrahiert werden sollen. Dies tun wir mit den bekannten Methoden (Parallel-Analyse, Kaiser-Kriterium, Scree-Plot).
+
+```{r}
+psych::fa.parallel(d_pca, fa = "pc", fm = "pa")
+psych::scree(d_pca, fa = F)
+```
+
+Die Parallel-Analyse schlägt drei Komponenten vor, nach dem Kaiser-Kriterium und dem Scree-Plot ergeben sich jedoch vier Komponenten (wobei der Screeplot nicht eindeutig ist). Wir entscheiden uns dafür, die Analyse mit vier Komponenten zu rechnen.
+
+Für die eigentliche Hauptkomponentenanalyse nutzen wir wieder die `principal()`-Funktion. Hier müssen wir erneut die Anzahl der Komponenten, die Methode (pc = principal component analysis) und die Art der Rotation unserer Matrix angeben.
+
+```{r}
+results_pca <- d_pca %>%
+  principal(
+    nfactors = 4,
+    rotate = "oblimin"
+  )
+
+# Output anpassen
+print(results_pca,
+  digits = 2, ## auf 2 Nachkommastellen runden
+  cut = .3, ## Ladungen unter .3 nicht anzeigen
+  sort = TRUE ## Items zu den Komponenten sortieren
+)
+```
+
+Die vier Komponenten können als "Zugehörigkeit und Verbundenheit" (TC1) zu Kolleg:innen und der Organisation, "Information und Koordination" (TC3), "Stressbewältigung und Erholung" (TC2) sowie "soziale Beziehungspflege" (TC4) bezeichnet werden. Wir sehen, dass einige Items Doppelladungen haben, also zu zwei Komponenten gehören, zum Beispiel lädt F201_15 ("Durch informelle Kommunikation fühle ich mich weniger einsam") auf "Zugehörigkeit und Verbundenheit" (TC1) und "Stressbewältigung und Erholung" (TC2), was inhaltlich ja durchaus Sinn macht.
+
+Wollen wir mit den Komponenten weiter rechnen, bieten sich die sog. Scores an, welche die Ausprägung einer Person bzw. eines Falls auf einem Faktor angibt. Scores sind standardisiert, d. h. sie haben einen Mittelwert von 0 und eine Standardabweichung von 1. Positive Werte bedeuten, dass der Fall in Bezug auf eine Komponente und im Vergleich zu allen anderen Fällen ein überdurchschnittliche Ausprägung aufweist und negative Werte bedeuten, dass der Fall gegenüber einer Komponente und im Vergleich zu allen anderen Fällen eine unterdurchschnittliche Die Schätzung der Scores sind in der Regel regressionsbasiert und könnnen korrelieren. Um für jeden Fall die Scores der verschiedenen Komponenten im Datensatz zu haben, speichern wir diese in ein Objekt und binden Sie an den Datensatz. Die ist auch bei der explorativen Faktoranalyse möglich.
+
+```{r}
+scores <- results_pca$scores # Scores extrahieren
+
+d_pca <- cbind(d_pca, scores) # an den Datensatz binden
+```
+
+::: callout-tip
+### Weiterführende Materialien
+
+Das Codebuch für den Datensatz gewohnheiten.xlsx finden Sie hier: [Bachelor Kursmaterialien](https://stats.ifp.uni-mainz.de/ba-datenanalyse/#kursmaterialien)
+:::
+
+## Glossar
+
+```{r, purl = F, echo = F}
+source("glossar.R")
+glossar("psych::cortest.bartlett|psych::KMO|psych::fa.parallel|psych::scree|psych::fa.diagram|principal")
+```
+
+## Hausaufgabe
+
+Sie möchten wissen, ob und welche latenten Faktoren hinter den Gewohnheitsstärke-Items für das Fernsehen stehen. Die Items sind in den elf Variablen `f_srhi_X` enthalten. Eignen sich die vorliegenden Daten für die Analyse? Begründen Sie ggf. die Wahl des Rotationsverfahrens und benennen Sie die Faktoren.

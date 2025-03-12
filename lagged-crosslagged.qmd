@@ -1,0 +1,164 @@
+---
+bibliography: references.bib
+---
+
+## Lagged und Cross-Lagged Modelle
+
+::: callout-tip
+### Quelle
+
+@stevic2023
+:::
+
+## Pakete und Daten
+
+Wir laden zunächst die notwendigen R-Pakete. Für Pfadanalysen benötigen wir wieder das `lavaan`-Paket. Wie immer laden wir `tidyverse` und `report`.
+
+```{r}
+library(lavaan)
+library(tidyverse)
+library(report)
+theme_set(theme_minimal())
+```
+
+Als Datensatz verwenden wir eine Zwei-Wellen-Panel-Befragung von Stevic et al. Hier wurden Kinder und Eltern zur (abendlichen) Mediennutzung, Aufmerksamkeitsdefiziten und der Leistung in der Schule befragt.
+
+```{r}
+d_stevic <- haven::read_sav("data/stevic_etal.sav") |>
+  mutate(female_child = if_else(gender_child_w1 == 1, 1, 0)) |>
+  haven::zap_labels()
+d_stevic
+```
+
+```{r}
+d_stevic |>
+  select(female_child, w1_nightuse_child_w1, w2_nightuse_child_w2, attention_parent_w1, attention_parent_w2) |>
+  report::report_table()
+```
+
+Ein Blick auf die Deskriptivstatistiken verrät, dass weniger als die Hälfte der Befragten zum 2. Messzeitpunkt noch geantwortet haben, wir also eine recht starke Panelmortalität haben.
+
+
+## Autokorrelation, -regression und Lagged Dependent Variable (LDV)
+
+### Autokorrelationen
+Zunächst betrachten wir die Stabilität der beiden zentralen Variablen: nächtliche Social-Media-Nutzung (Selbstbericht der Kinder) und Aufmerksamkeitsschwierigkeiten (beurteilt durch die Eltern).
+
+```{r}
+cor.test(~ w1_nightuse_child_w1 + w2_nightuse_child_w2, d_stevic) |>
+  report_table()
+```
+
+Es besteht eine mittlere Korrelation zwischen den Messungen der nächtlichen Mediennutzung, d.h. die Test-Retest-Reliabilität und/oder Stabilität des Mediennutzungsverhaltens ist moderat.
+
+```{r}
+cor.test(~ attention_parent_w1 + attention_parent_w2, d_stevic) |>
+  report::report_table()
+```
+
+
+Die Autokorrelation bei den (von den Eltern angegebenen) Aufmerksamkeitsdefiziten ist etwas stärker ausgeprägt, d.h. die Einschätzung ist reliabler und/oder stabiler über die Zeit. Einfach formuliert: Kinder, die schon zum ersten Messzeitpunkt relativ starke/geringe Aufmerksamkeitsdefizite aufwiesen (laut Eltern), taten dies auch zum zweiten Messzeitpunkt. Die Rangreihe der Kinder ist also relativ stabil über die Zeit.
+
+
+### Regression ohne und mit LDV
+
+Das naive Regressionsmodell versucht, die Aufmerksamkeitsdefizite zu $t_2$ durch die nächtliche Social-Media-Nutzung zu $t_1$ vorherzusagen.
+
+```{r}
+results_naiv <- lm(attention_parent_w2 ~ w1_nightuse_child_w1, d_stevic)
+report::report_table(results_naiv)
+```
+
+Es scheint einen positiven, statistisch signifikanten Einfluss der nächtlichen Mediennutzung auf spätere Aufmerksamkeitsdefizite zu geben.  Was passiert, wenn wir die zuvor erhobenen Aufmerksamkeitsprobleme zu $t_1$ im Modell berücksichtigen? Dies entspricht dem klassischen LDV-Modell.
+
+```{r}
+results_ldv <- lm(attention_parent_w2 ~ w1_nightuse_child_w1 + attention_parent_w1, d_stevic)
+report::report_table(results_ldv)
+```
+
+Berücksichtigen wir die bereits zum ersten Messzeitpunkt gemessenen Aufmerksamkeitsproblem, wird der geschätzte Effekt der nächtlichen Mediennutzung deutlich kleiner und statistisch nicht-signifikant (auch wenn wir bei einer gerichteten Hypothese wie oben einseitig testen würden). Anders formuliert: Wenn wir in Rechnung stellen, dass manche Kinder bereits bei der ersten Messung viele/wenige Aufmerksamkeitsdefizite hatten, finden wir nur einen kleinen, nicht signfikanten Medieneffekt. Dies ist sehr häufig der Fall.
+
+::: callout-important
+## Interpretation des LDV-Koeffizienten
+
+Der Koeffizient der Lagged Dependent Variable sollte **nicht** als Verstärkungs/Abschwächungseffekt interpretiert werden, d.h. ein positiver Koeffizient bedeutet **nicht** unbedingt, dass Kinder mit Aufmerksamkeitsproblemen zu $t_1$ noch *mehr* Aufmerksamkeitsprobleme zu $t_2$ hatten, sondern wie oben beschrieben, die Rangfolge der Kinder nach Aufmerksamkeitsproblem bleibt relativ stabil. Folgende 3 Muster haben **alle** einen standardisierten Autoregressionseffekt von 1:
+
+```{r, echo = F, fig.height = 3, fig.asp = .33, purl = F}
+x <- 1:5
+y1 <- x
+y2 <- x + 1
+y3 <- x - 1
+bind_rows(
+  tibble(id = x, t1 = x, t2 = y1),
+  tibble(id = x, t1 = x, t2 = y2),
+  tibble(id = x, t1 = x, t2 = y3),
+  .id = "k"
+) |>
+  gather(a, b, -k, -id) |>
+  ggplot(aes(x = a, y = b, group = id)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~k) +
+  labs(x = "", y = "", k = "")
+```
+
+:::
+
+
+Umgekehrt können wir auch untersuchen, ob Kinder mit Aufmerksamkeitsdefiziten eher zu nächtlicher Social-Media-Nutzung neigen. Diesmal schätzen wir gleich das LDV-Modell, d.h. wir berücksichtigen die zu $t_1$ berichtete Mediennutzung.
+
+```{r}
+results_ldv2 <- lm(w2_nightuse_child_w2 ~ w1_nightuse_child_w1 + attention_parent_w1, d_stevic)
+report::report_table(results_ldv2)
+```
+
+Der Zusammenhang ist nicht-signifikant bei einem zweiseitigen Test, allerdings dürften wir bei einer gerichteten Hypothese wie oben den p-Wert halbieren.
+
+## Cross-lagged Panel Model (CLPM)
+
+### Bivariates CLPM
+
+Wie bei den Mediationsanalysen können wir statt zwei separater Regressionen auch ein einzelnes Pfadmodell rechnen, um beide reziproken Pfade gleichzeitig zu schätzen. Hierfür verwenden wir wieder das `lavaan`-Paket und den dort üblichen Ablauf aus Modellspezifikation und anschließender Schätzung. Das Cross-Lagged-Panel-Modell wird mit derselben Modellformel wie die Einzelregressionen spezifiziert:
+
+```{r}
+clp_model <- "
+  attention_parent_w2 ~ w1_nightuse_child_w1 + attention_parent_w1
+  w2_nightuse_child_w2 ~ w1_nightuse_child_w1 + attention_parent_w1
+
+  w1_nightuse_child_w1 ~~ attention_parent_w1
+"
+results_clpm <- lavaan::sem(clp_model, data = d_stevic)
+summary(results_clpm, standardized = TRUE, rsquare = TRUE)
+```
+
+Im Output-Block `Regressions` erhalten wir dieselben Koeffizienten wie zuvor. Zusätzlich können wir im Block `Covariances` noch die Korrelation zwischen den beiden Variablen zu $t_1$ sehen (r = .111) sowie die Korrelation der *Residuen* der beiden Variablen zu $t_2$. Letzteres ist der Zusammenhang nach Kontrolle der autoregressiven und der cross-lagged Effekte. Ist dieser signifikant, deutet dies zumeist auf eine nicht-berücksichtigte Drittvariable hin.
+
+### CLPM mit Kovariaten
+
+Das CLPM kann mit beliebigen zeitlich variierenden oder nicht variierenden Variablen erweitert werden. Als Beispiel kontrollieren wir statistisch für das Ge der Kinder. Hierfür erweitern wir die Spefizikation, so dass für beide Variablen der Prädiktor `female_child` hinzukommt.
+
+
+```{r}
+clp_model_age <- "
+  attention_parent_w2 ~ w1_nightuse_child_w1 + attention_parent_w1 + female_child
+  w2_nightuse_child_w2 ~ w1_nightuse_child_w1 + attention_parent_w1 + female_child
+
+  w1_nightuse_child_w1 ~ female_child
+   attention_parent_w1 ~ female_child
+  w1_nightuse_child_w1 ~~ attention_parent_w1
+"
+results_clpm_age <- lavaan::sem(clp_model_age, data = d_stevic)
+summary(results_clpm_age, standardized = TRUE, rsquare = TRUE)
+```
+
+Wir erkennen, dass Mädchen signifikant häufiger nachts Social Media genutzt haben, während es bei den Aufmerksamkeitsproblemen keine signifikanten Unterschiede zwischen Jungen und Mädchen gab.
+
+## Glossar
+
+```{r, purl = F, echo = F}
+source("glossar.R")
+glossar("cor.test")
+```
+
+## Hausaufgabe
+Untersuchen Sie den längsschnittlichen Zusammenhang zwischen nächtlicher Social-Media-Nutzung und schulischen Leistungen (`obj_performance_child_wX`).

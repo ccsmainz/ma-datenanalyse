@@ -1,0 +1,268 @@
+# ANOVA und Regression
+
+## Pakete und Daten
+
+Wir laden zunächst die notwendigen R-Pakete. Für die ANOVA und Regression brauchen wir das `marginaleffects`- , sowie das `tidyverse`- und das `report`-Paket. Für eine schönere Darstellung der Plots setzen wir außerdem das Theme auf `theme_minimal`.
+
+```{r}
+library(marginaleffects)
+library(tidyverse)
+library(report)
+theme_set(theme_minimal())
+```
+
+Für die ANOVA und die Regression nutzen wir den SPSS-Datensatz `productplacement_anova.sav` und wir wandeln die Spalte `Placementhäufigkeit` in einen Faktor um, sodass es als kategoriale Variable behandelt wird. Der Datensatz enthält zwei Spalten: die Placementhäufigkeit und das Persuasionswissen.
+
+```{r}
+d_pp <- haven::read_sav("data/productplacement_anova.sav") |>
+  mutate(Placementhäufigkeit = as_factor(Placementhäufigkeit))
+d_pp
+```
+
+Zudem laden wir dem SPSS-Datensatz `wahlabsicht_regression.sav`. Auch hier wird eine Spalte, in diesem Fall `Sex`, in einen Faktor umgewandelt, sodass es als kategoriale Variable behandelt wird. Der Datensatz enthält 8 Spalten: Bildung, Sex, Einkommen, Politische Wertorientierung, Wirksamkeitserwartung, Qualitätsmedien, Wahlabsicht und Boulevardmedien.
+
+```{r}
+d_wahl <- haven::read_sav("data/wahlabsicht_regression.sav") |>
+  mutate(Sex = as_factor(Sex)) |>
+  haven::zap_labels()
+d_wahl
+```
+
+::: callout-important
+### Variablenübersicht für Datensätze  
+
+Aus einigen Datenformaten, vor allem SPSS-Dateien, lassen sich automatisch Variablenübersichten mit Variablen- und Wertelabels generieren. Die einfachste Funktion ist dafür `view_df()` aus dem `sjPlot`-Paket:
+
+```{r, purl = F, eval=F}
+sjPlot::view_df(d_wahl)
+```
+
+
+
+:::
+
+
+## ANOVA
+
+### Mittelwertvergleiche
+
+Mit der ANOVA überprüfen wir den Einfluss einer Gruppen- bzw. Faktor-Variable (kategorial, also nominal oder ordinal mit wenigen Ausprägungen) auf eine metrische Variable, wobei im Gegensatz zum t-Test mehr als zwei Gruppen verglichen werden können. (Für eine ausführlichere Erklärung siehe die Webseite für die BA-Datenanalyse: https://stats.ifp.uni-mainz.de/ba-datenanalyse/t-test.html).
+
+In unserem Experiment ist eine der zentralen Annahmen, dass sich die `Placementhäufigkeit` auf das `Persuasionswissen` auswirkt.
+
+Zunächst nutzen wir die Funktionen `group_by()` und `summarise()`, um Mittelwert, Standardabweichung und Fallzahl für die Variable `Persuasionswissen` basierend auf den Gruppen der Variable `Placementhäufigkeit` auszugeben.
+
+```{r}
+d_pp |>
+  group_by(Placementhäufigkeit) |>
+  summarise(
+    M = mean(Persuasionswissen, na.rm = TRUE),
+    SD = sd(Persuasionswissen, na.rm = TRUE),
+    n = n()
+  )
+```
+
+Das Ergebnis zeigen, dass mit zunehmender Placementhäufigkeit der Mittelwert der Zielvariable steigt: Bei 0 Placements liegt er bei M=5, bei 7 Placements bei M=10 und bei 15 Placements bei M=12. Die Standardabweichungen variieren dabei, wobei die Gruppe mit 15 Placements die geringste Streuung aufweist.
+
+### Einfaktorielle Varianzanalyse
+
+Die einfaktorielle Varianzanalyse dient dazu, Unterschiede in den Gruppenmittelwerten der abhängigen Variable `Persuasionswissen` basierend auf den Kategorien der faktoriellen Variable `Placementhäufigkeit` zu untersuchen.
+
+**Nullhypothese H0:** Der Mittelwert des Persuasionswissen ist in allen Experimentalbedingungen gleich.
+
+Wir verwenden die Funktion `aov()`, um die einfaktorielle Varianzanalyse durchzuführen. Die grundlegende Syntax lautet: `aov(metrische_variable ~ gruppen_variable, data = Datenframe)`. Außerdem benutzen wir die `report_table()`-Funktion, um die Ergebnisse der Varianzanalyse in einer übersichtlichen Tabelle darzustellen. Diese enthält neben F-Wert, Freiheitsgraden und p-Wert auch das Effektstärkemaß Eta².
+
+```{r}
+results_aov_pp <- aov(Persuasionswissen ~ Placementhäufigkeit, data = d_pp)
+
+results_aov_pp |>
+  report::report_table()
+```
+
+In unserem Fall zeigt sich, dass sich die Experimentalgruppen statistisch signifikant hinsichtlich ihres Persuasionswissens (F(2, 12) = 20.53, p \< .001) unterscheiden, wobei das Modell mit 77% Varianzaufklärung (Eta² = 0.77) eine große Vorhersagekraft des Antwortverhaltens hat. Wir wissen aber noch nicht, welche Gruppen sich unterschieden. Die Varianzanalyse gibt nur Aufschluss darüber, ob sich mindestens zwei der Gruppen signifikant voneinander unterscheiden. Vergleichen wir nur zwei Gruppen, reicht uns dieses Ergebnis schon. Vergleichen wir aber mehr als zwei Gruppen, wollen wir auch wissen, *welche* Gruppen sich signifikant voneinander unterscheiden. Hierfür benötigen wir Post-Hoc-Tests.
+
+### Post-Hoc-Tests
+
+Um zu ermitteln, welche Gruppen sich signifikant voneinander unterscheiden, wird mithilfe von paarweisen Vergleichen und einer Alphafehler-Korrektur vorgegangen. In diesem Fall wird der Bonferroni-Korrekturansatz verwendet, der das Risiko von falsch positiven Ergebnissen verringert.
+
+Mit der Funktion `marginaleffects::avg_comparisons()` werden paarweise Vergleiche zwischen den Gruppen der Variable `Placementhäufigkeit` durchgeführt. Die Funktion nimmt das zuvor erstellte ANOVA-Modell als Grundlage, und durch die Option `p_adjust = "bonferroni"` wird sichergestellt, dass die p-Werte entsprechend angepasst werden, um den kumulierten Fehler durch mehrere Tests zu kontrollieren. Die Ergebnisse der paarweisen Vergleiche werden in einem übersichtlichen Format mithilfe von `as_tibble()` dargestellt.
+
+```{r}
+results_aov_pp |>
+  marginaleffects::avg_comparisons(
+    variables = list(Placementhäufigkeit = "pairwise"),
+    p_adjust = "bonferroni"
+  ) |>
+  as_tibble()
+```
+
+Der Post-hoc-Test zeigt, dass zwischen den Gruppen 0 Placements und 7 Placements sowie zwischen 7 Placements und 15 Placements signifikante Unterschiede im Persuasionswissen bestehen.
+
+### Modellvorhersagen und -visualisierung
+
+Ähnlich wie bein dem eben verwendeten Post-Hoc-Test nutzen wir die Funktion `marginaleffects::avg_predictions()`. Der Unterschied liegt darin, dass hier Modellvorhersagen (`predictions`) anstelle von Vergleichen (`comparisons`) berechnet werden.
+
+```{r}
+results_aov_pp |>
+  marginaleffects::avg_predictions(variables = "Placementhäufigkeit") |>
+  as_tibble()
+```
+
+Wir sehen, dass das Persuasionswissen signifikant ansteigt, wenn die Anzahl der Placements erhöht wird. Dies deutet darauf hin, dass eine größere Anzahl an Placements mit einer höheren Wahrscheinlichkeit verbunden ist, dass die Rezipienten das Persuasionswissen aufnehmen. Die p-Werte sind alle signifikant (p \< 0.001).
+
+Für die Visualisierung erstellen wir nun mit `ggplot()` und `geom_pointrange()` eine Visualisierung der Mittelwerte und dazugehörigen Konfidenzintervalle von den Modellvorhersage pro Gruppe. Die x-Achse zeigt die Placementhäufigkeit, während die y-Achse die geschätzten Vorhersagen für das Persuasionswissen darstellt. Mit `geom_pointrange()` werden Punkte für die geschätzten Mittelwerte und vertikale Linien für die Konfidenzintervalle gezeichnet. So können wir erkennen, wie das Persuasionswissen je nach Placementhäufigkeit variiert und wie präzise diese Schätzungen sind.
+
+```{r}
+results_aov_pp |>
+  marginaleffects::avg_predictions(variables = "Placementhäufigkeit") |>
+  as_tibble() |>
+  ggplot(aes(
+    x = Placementhäufigkeit, y = estimate,
+    ymin = conf.low, ymax = conf.high
+  )) +
+  geom_pointrange() +
+  labs(x = "Placementhäufigkeit", y = "Vorhergesagtes Persuasionswissen")
+```
+
+## Regression
+
+### ANOVA = Regression
+
+Wenn wir den Zusammenhang zwischen zwei metrischen Variablen, wie Placementhäufigkeit und Persuasionswissen, untersuchen wollen, können wir eine lineare Regression durchführen.
+
+**Nullhypothese H0**: Die Placementhäufigkeit hat keinen Einfluss auf das Persuasionswissen.
+
+Lineare Regression werden mit der Funktion `lm()` durchgeführt, wobei die Syntax `lm(abhängige_variable ~ unabhängige_variable, data = Datenframe)` der von `aov()` für Mittelwertvergleiche entspricht. Wir führen die Regression durch und speichern das Ergebnis im Objekt `results_lm_pp`.
+
+Mit `summary()` erhalten wir eine Zusammenfassung des Regressionsmodells, die wichtige Informationen wie die Koeffizienten der unabhängigen Variablen, die Signifikanzniveaus (p-Werte), das Bestimmtheitsmaß (R-Quadrat) und weitere statistische Kennzahlen enthält.
+
+```{r}
+results_lm_pp <- lm(Persuasionswissen ~ Placementhäufigkeit, data = d_pp)
+
+results_lm_pp |>
+  summary()
+```
+
+Für einen Output in einer übersichtlichen Tabelle nutzen wir wieder `report_table()`.
+
+```{r}
+results_lm_pp |>
+  report::report_table()
+```
+
+Wir erkennen am 95%-CI, das nicht die Null enthält, oder am p-Wert (p \< .001), dass die Placementhäufigkeit das Persuasionswissen statistisch signifikant vorhersagt. Der standardisierte Regressionskoeffizient entspricht für 7 Placements r = 1.44 und für 15 Placements r = 2.02. Basierend auf Cohen (1988) kann man also bei beiden von einem starken Effekt sprechen. Das R-Quadrat beträgt einen Wert von R²=.77, d.h. unser Regressionsmodell kann 77% der Varianz in der Variable Persuasionswissen vorhersagen.
+
+Wir verwenden wieder die Funktion `marginaleffects::avg_predictions()` zur Berechnung der durchschnittlichen Vorhersagen für das Persuasionswissen in Bezug auf die Placementhäufigkeit. Diese mal aber basierend auf dem Regressionsmodell `results_lm_pp`. Diese Vorhersagen geben Aufschluss darüber, wie sich das Persuasionswissen im Durchschnitt verändert, wenn sich die Placementhäufigkeit ändert, und helfen dabei, die Auswirkungen davon anschaulich zu verstehen.
+
+```{r}
+results_lm_pp |>
+  marginaleffects::avg_predictions(variables = "Placementhäufigkeit") |>
+  as_tibble()
+```
+
+Auch hier zeigt der Output, dass das Persuasionswissen im Durchschnitt signifikant ansteigt, wenn die Anzahl der Placements erhöht wird.
+
+### Multiple Regression
+
+Mit der `lm()-Funktion` können wir auch multiple Regressionen berechnen, bei denen es mehr als eine unabhängige Variable gibt. Die Syntax ist identisch, es werden einfach die Variablen mit `+` verbunden.
+
+Hier benutzen wir den Datensatz der Wahlabsicht und schauen, ob die Wahlabsicht vom Sex, Bildung, Einkommen, Politische Wertorientierung, Wirksamkeitserwartung beeinflusst wird. Wir führen die Multiple Regression durch und speichern das Ergebnis im Objekt `results_wahl_1` um anschließend wieder `report_table()`zu verwenden.
+
+```{r}
+results_wahl_1 <- lm(
+  Wahlabsicht ~ Sex + Bildung + Einkommen +
+    PolitischeWertorientierung + Wirksamkeitserwartung,
+  data = d_wahl
+)
+results_wahl_1 |>
+  report::report_table()
+```
+
+Wir erkennen, dass nur die Bildung und die Wirksamkeitserwartung die Wahlabsicht beeinflussen. Bei der Bildung zeigt sich ein positiver Einfluss mit einem Koeffizienten von 0.19, was bedeutet, dass jeder zusätzliche Punkt in der Bildung zu einem Anstieg der Wahlabsicht um 0.19 Skalenpunkte führt. Dieser Effekt ist signifikant (p \< 0.001). Die Wirksamkeitserwartung hat einen noch stärkeren Einfluss auf die Wahlabsicht, mit einem Koeffizienten von 0.40. Das bedeutet, dass ein höheres Maß an Wirksamkeitserwartung mit einem Anstieg der Wahlabsicht um 0.40 Skalenpunkte verbunden ist. Auch dieser Effekt ist signifikant (p \< 0.001). Im Gegensatz dazu zeigen die Variablen Sex, Einkommen und politische Wertorientierung keinen signifikanten Einfluss auf die Wahlabsicht, da ihre p-Werte über 0.05 liegen. Die Vorhersagequalität unseres Modells liegt bei einem R-Quadrat von R²=.34, was darauf hinweist, dass die Prädiktoren zusammen etwa 34% der Varianz der Wahlabsicht erklären.
+
+Nun führen wir wieder eine multiple Regressionen durch, aber ergänzen noch Qualitätsmedien und Boulevardmedien als Variablen.
+
+```{r}
+results_wahl_2 <- lm(
+  Wahlabsicht ~ Sex + Bildung + Einkommen +
+    PolitischeWertorientierung + Wirksamkeitserwartung +
+    Qualitätsmedien + Boulevardmedien,
+  data = d_wahl
+)
+results_wahl_2 |>
+  report::report_table()
+```
+
+Hier sehen wir, dass die Bildung, die Wirksamkeitserwartung, wie auch Qualitätsmedien und Boulevardmedien statistisch signifikant die Wahlabsicht beeinflussen (p \< 0.001).
+
+### Modellvergleich
+
+Ob Modell 2 signifikant mehr Varianz im politischen Wissen erklären kann als Modell 1, zeigt der partielle F-Test, der mit der `anova()`-Funktion durchgeführt wird. Funktionsargumente sind die beiden Modelle, die verglichen werden sollen.
+
+```{r}
+anova(results_wahl_1, results_wahl_2)
+```
+
+Die Residualvarianz von Modell 2 ist signifikant kleiner, bzw. die erklärte Varianz signifikant größer als bei Modell 1. Durch das Hinzufügen der Variablen Qualitätsmedien und Boulevardmedien hat sich die Modellgüte deutlich verbessert.
+
+### Modellannahmen
+
+Für die Prüfung der klassischen OLS-Annahmen wie Linearität, Normalverteilung der Residuen, Homoskedastizität und Multikollinearität gibt es im `performance`-Paket eine Sammelfunktion, die schlicht `check_model()` heißt.
+
+```{r}
+checks <- performance::check_model(results_wahl_2, panel = F)
+plot(checks)
+```
+
+### Modellvorhersagen
+
+Um aus Regressionsmodellen in R Vorhersagen zu generieren, benutzen wir die Funktion `avg_predictions()` aus dem `marginaleffects`-Paket. Dabei erhalten wir für eine oder mehrere Prädiktorvariablen vorhergesagte Werte des Outcomes. Dabei werden für kategorielle Variablen die Vorhersagen für jede Ausprägung aggregiert, für metrische über (typische) Einzelwerte.
+
+```{r}
+results_wahl_2 |>
+  marginaleffects::avg_predictions(variables = "Boulevardmedien") |>
+  as_tibble()
+```
+
+Die Tabelle zeigt die Vorhersagen für die Wahlabsicht in Abhängigkeit von der Nutzung von Boulevardmedien. Für jede Ausprägung der Boulevardmediennutzung wird ein geschätzter Wert der Wahlabsicht (`estimate`) angegeben. Diese Schätzungen werden mit dem jeweiligen Standardfehler (`std.error`), der Teststatistik (`statistic`) und dem p-Wert (`p.value`) präsentiert. Die Konfidenzintervalle (`conf.low`, `conf.high`) geben an, in welchem Bereich der wahre Wert der Wahlabsicht mit hoher Wahrscheinlichkeit liegt. Höhere Boulevardmediennutzung ist mit einer niedrigeren Wahlabsicht verbunden.
+
+### Modellvisualisierung
+
+Die Vorhersagen für metrische Prädiktoren lassen sich am besten als Regressionsgerade samt Konfidenzband visualisieren, d.h. `geom_line()` und `geom_ribbon()`. Das Konfidenzband wird fast transparent dargestellt (`alpha = .1`). Auf der X-Achse ist die Prädiktorvariable, auf der Y-Achse die vorhergesagten Werte.
+
+```{r}
+results_wahl_2 |>
+  marginaleffects::avg_predictions(variables = "Boulevardmedien") |>
+  as_tibble() |>
+  ggplot(aes(
+    x = Boulevardmedien, y = estimate,
+    ymin = conf.low, ymax = conf.high
+  )) +
+  geom_line() +
+  geom_ribbon(alpha = .1) +
+  labs(x = "Nutzungshäufigkeit Boulevardmedien", y = "Vorhergesagte Wahlabsicht")
+```
+
+::: callout-tip
+### Weiterführende Materialien
+
+Weitere detaillierte Beispiele mit R-Code und Daten finden sich in den Materialien zur Vorlesung [Anwendungsorientierte Analyseverfahren](https://stats.ifp.uni-mainz.de/ba-aa-vl/), u.a. zu
+
+-   kategoriellen und metrischen Prädiktorvariablen
+-   multipler Regression und Regressionsannahmen
+-   Modellvorhersagen und -visualisierungen
+:::
+
+## Glossar
+
+```{r, purl = F, echo = F}
+source("glossar.R")
+glossar("lm|anova|marginaleffects::avg_predictions|marginaleffects::avg_comparisons|performance::check_performance")
+```
+
+## Hausaufgabe
+
+In einer Studie wurde untersucht, welche Merkmale Vorurteile gegenüber Asylsuchenden bei Befragten beeinflussen (Datensatz `asyl.sav`).
+
+1.  Untersuchen sie den Zusammenhang von Demographie (Geschlecht, Alter, Bildung), politischen Überzeugungen (allg. politisches Interesse, Ideologie (links-rechts-Selbsteinschätzung, Autoritarismus, Wahrnehmung negativer Mediendarstellungen) und Vorurteilen gegenüber Asylsuchenden.
+2.  Identifizieren, interpretieren und visualisieren sie den stärksten Effekt aus dem Regressionsmodell.

@@ -1,0 +1,90 @@
+project:
+  type: book
+  output-dir: docs
+  pre-render: render.R
+  post-render: post_render.R
+  resources:
+    - ba-datenanalyse.zip
+ #   - code
+ #   - data
+ #   - ha
+ #   - uebungen
+
+book:
+  title: "Fortgeschrittene Datenanalyse mit R"
+  #author: "Schnauber-Stockmann, Scharkow, Winkler, Jost"
+  language: "de"
+  page-footer: "Institut für Publizistik, Johannes Gutenberg-Universität Mainz | [Impressum](https://www.uni-mainz.de/impressum/) | [Datenschutz](https://www.uni-mainz.de/datenschutz/)"
+  sidebar:
+    style: floating
+    search: true
+    title: "**IfP** | Stats </br>**Fortgeschrittene** Datenanalyse <br/> mit **R**"
+    description: "BA"
+    number-sections: true
+
+  chapters:
+    - index.qmd
+    - part: Regressionsmodelle
+      chapters:
+        - regression-anova.qmd
+        - moderation-interaktionen.qmd
+        - mediation-pfadmodelle.qmd
+    - part: Längsschnitts - und Multilevelmodelle
+      chapters:
+         - lagged-crosslagged.qmd
+         - multilevel-panel.qmd
+         - multilevel.qmd
+    - part: Faktorenanalyse
+      chapters:
+        - explorative-faktorenanalyse.qmd
+        - konfirmatorische-faktorenanalyse.qmd
+        - messinvarianz.qmd
+    - uebungen.qmd
+    - glossar.qmd
+    - literatur.qmd
+
+
+bibliography: references.bib
+csl: apa-cv.csl
+suppress-bibliography: true
+link-citations: false
+citations-hover: false
+
+knitr:
+  opts_chunk:
+    class-output: "txt"
+    warning: false
+    message: false
+    out.width: "100%"
+    fig.width: 8
+    fig.asp: .618
+    R.options:
+      tibble.print_max: 5
+      tibble.print_min: 5
+
+format:
+  html:
+    theme: [cosmo, styles.scss]
+    highlight-style: monokai
+    code-overflow: scroll
+    fig-align: center
+    title-block-style: none
+    toc-title: "Inhalt"
+#  pdf:
+#    mainfont: "Minion Pro"
+#    sansfont: "Minion Pro"
+#    monofont: "Inconsolata"
+#    monofontoptions:
+#      - Scale=0.8
+#    fontsize: 12pt
+#    papersize: a4
+#    lang: de
+#    classoption: "ngerman, DIV14, onesided"
+#    highlight-style: atom-one
+#    pdf-engine: xelatex
+
+editor_options:
+  chunk_output_type: console
+
+execute:
+  freeze: auto

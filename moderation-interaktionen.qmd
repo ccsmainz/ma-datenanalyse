@@ -1,0 +1,220 @@
+# Moderationsanalyse
+
+::: callout-tip
+### Quelle
+
+@wirth2009
+:::
+
+## Pakete und Daten
+
+Zunächst laden wir das `marginaleffects`- sowie das `tidyverse`- und das `report`-Paket.
+
+```{r}
+library(marginaleffects)
+library(tidyverse)
+library(report)
+theme_set(theme_minimal())
+```
+
+Für die Moderationsanalyse benötigen wir den SPSS-Datensatz `productplacement_moderation.sav`. Mit der `mutate`-Funktion passen wir zwei Variablen an: Die Variable `Placementhäufigkeit` wird in einen Faktor umgewandelt und ungenutzte Kategorien werden mit `fct_drop()` entfernt. Ebenso wird die Variable `Involvement` in einen Faktor umgewandelt. Schließlich entfernt die Funktion `zap_labels()` die SPSS-Labels, um die Daten ohne zusätzliche Kennzeichnungen zu verwenden. Der Datensatz enthält 6 Spalten. eine laufende Nummer (lfdn), Placementhäufigkeit, Involvement, Bekanntheit und Störempfinden.
+
+```{r}
+d_pp2 <- haven::read_sav("data/productplacement_moderation.sav") |>
+  mutate(
+    Placementhäufigkeit = as_factor(Placementhäufigkeit) |> fct_drop(),
+    Involvement = as_factor(Involvement)
+  ) |>
+  haven::zap_labels() |>
+  select(-onefaktor)
+d_pp2
+```
+
+## Kategorieller Moderator
+
+Wir untersuchen, wie sich das Störempfinden je nach den Kategorien von Placementhäufigkeit (7 oder 15) und Involvement (hoch/niedrig) verändert. Die Variable Involvement ist hier der kategorialer Moderator.
+
+Als Erstes gruppieren wir mit `group_by` den Datensatz basierend auf den Kategorien von `Placementhäufigkeit` und `Involvement` und berechnen den Mittelwert, die Standardabweichung und die Anzahl der Beobachtungen für das `Störempfinden` in jeder Gruppe.
+
+```{r}
+d_pp2 |>
+  group_by(Placementhäufigkeit, Involvement) |>
+  summarise(
+    M = mean(Störempfinden, na.rm = TRUE),
+    SD = sd(Störempfinden, na.rm = TRUE),
+    n = n()
+  )
+```
+
+Der Output zeigt, dass bei 7 Placements die Gruppe mit niedrigem Involvement ein geringeres Störempfinden hat als die mit hohem Involvement. Bei 15 Placements ist das Störempfinden in der Gruppe mit niedrigem Involvement höher, während es bei hohem Involvement deutlich niedriger bleibt.
+
+### Zweifaktorielle ANOVA und moderierte Regression
+
+Für die zweifaktorielle ANOVA verwenden wir die Funktion `aov()`. Um eine Interaktion herzustellen benutzen wir das Sternchen (`*`), was bedeutet, dass neben den Haupteffekten der einzelnen Variablen auch deren gemeinsamer Einfluss auf die abhängige Variable, in diesem Fall das `Störempfinden`, untersucht wird. Wie immer kommt zum Schluss die `report_table()`-Funktion. Wir führen die zweifaktorielle ANOVA durch und speichern das Ergebnis im Objekt `results_aov_involve`.
+
+```{r}
+results_aov_involve <- aov(Störempfinden ~ Placementhäufigkeit * Involvement, data = d_pp2)
+report::report_table(results_aov_involve)
+```
+
+In unserem Fall zeigt sich, dass sich die Gruppen hinsichtlich ihres Störempfindens aufgrund der Placementhäufigkeit statistisch signifikant unterscheiden (F(1, 78) = 4.32, p = .041), nicht jedoch nach Involvement. Relevant ist nun die Interaktion zwischen Placementhäufigkeit und Involvement (F(1, 78) = 5.32, p = .024), was darauf hinweist, dass der Effekt der Placementhäufigkeit auf das Störempfinden je nach Involvement-Level unterschiedlich ausfällt.
+
+Um eine moderierte Regression zu berechnen verwenden wir die `lm()`-Funktion und wie auch bei der zweifaktoriellen ANOVA wird hier die Interaktion durch das Sternchen (`*`) angezeigt. Wie gewohnt kommt die `report_table()`-Funktion und das Ergbenis wird in dem Objekt `results_involve`gespeichert. Wie wir bereits gesehen haben, sind ANOVA und Regression statistisch identisch, wir bekommen lediglich einige andere Koeffizienten angezeigt.
+
+```{r}
+results_involve <- lm(Störempfinden ~ Placementhäufigkeit * Involvement, data = d_pp2)
+report::report_table(results_involve)
+```
+
+Bei der moderierten Regression werden grundsätzlich konditionale Effekte ausgegeben, d.h. für jede Variable, die im Interaktionsterm enthalten ist, gilt: Die ist der Effekt, wenn die jeweils andere Variable Null ist bzw. bei kategoriellen Variablen die Referenzgruppe. Betrachten wir zunächst die Placementhäufigkeit: Wir sehen am 95%-Konfidenzintervall, dass der Wert Null nicht enthalten ist, sowie am p-Wert (p = .003), dass die Placementhäufigkeit das Störempfinden signifikant vorhersagt, wenn das Involvement niedrig ist (Referenzgruppe, konditionaler Effekt). Der konditionale Effekt von Involvement bei wenig Placements (konditionaler Effekt) ist nicht signifikant. Zusätzlich zeigt die signifikante Interaktion zwischen Placementhäufigkeit und Involvement (p = .024), dass der Effekt der Placementhäufigkeit auf das Störempfinden durch das Niveau des Involvements moderiert wird (und umgekehrt). Das bedeutet, dass der Einfluss von Placementhäufigkeit auf das Störempfinden je nach Involvement unterschiedlich stark ausgeprägt ist. Das R-Quadrat beträgt R²=.11, was bedeutet, dass unser Modell etwa 11% der Varianz im Störempfinden erklärt.
+
+### Durchschnittliche Effekte: AME
+
+Zur Interpretation der (unkonditionalen bzw. marginalen) Haupteffekte nutzen wir die Funktion `avg_slopes()`. Diese Funktion berechnet den Average Marginal Effect (AME). Das bedeutet, dass die Funktion für jeden Fall (= Person) in der Stichprobe den Effekt der Prädiktoren auf die abhängige Variable berechnet. Anschließend wird der Durchschnitt gebildet. Auf diese Weise erhalten wir den durchschnittlichen Effekt eines Prädiktors über alle Werte der Moderationsvariable in der Stichprobe.
+
+```{r}
+marginaleffects::avg_slopes(results_involve) |>
+  as_tibble()
+```
+
+Diese AME entsprechen denen des unkonditionalen Modells, also ohne Interaktionsterm, welches nun berechnet wird. Es betrachtet die Haupteffekte von Placementhäufigkeit und Involvement separat und unabhängig voneinander auf Störempfinden, ohne eine Interaktion zwischen den Variablen zu berücksichtigen. Wir benutzen wie bei einer ganz normalen multiple Regression die `lm()`-, und `report_table()`-Funktionen.
+
+```{r}
+lm(Störempfinden ~ Placementhäufigkeit + Involvement, data = d_pp2) |>
+  report::report_table()
+```
+
+An dem Output sehen wir, dass der Effekt der Placementhäufigkeit auf das Störempfinden statistisch signifikant ist, da der p-Wert (p = .045) unter 0.05 liegt und das 95%-Konfidenzintervall (CI) den Nullpunkt nicht enthält.Involvement hingegen zeigt keinen signifikanten Einfluss auf das Störempfinden (p = .669). Die Punktschätzer entsprechen den AME aus dem moderierten Regressionsmodell.
+
+### Konditionale Effekte nach Gruppen
+
+Mit dem Funktionsargument `by` können wir die konditionalen Effekte für Placementhäufigkeit in Abhängigkeit von Involvement berechnen, zudem verwenden wir das gespeicherte Ergebnis `results_involve` aus der moderierten Regression.
+
+```{r}
+marginaleffects::avg_slopes(results_involve,
+  variables = "Placementhäufigkeit", by = "Involvement"
+) |>
+  as_tibble()
+```
+
+Das Ergebnis zeigt uns, dass bei niedrigem Involvement ein starker positiver Effekt der Placementhäufigkeit zu erkennen ist (B = 1.02), während sich bei hohem Involvement praktisch kein Effekt zeigt (B = -0.0509).
+
+### Modellvorhersagen und -visualisierung
+
+Für die Modellvorhersagen verwenden wir wieder die Funktion `avg_predictions()` und nehmen Placementhäufigkeit und Involvement als unsere Variablen.
+
+```{r}
+marginaleffects::avg_predictions(results_involve,
+  variables = c("Placementhäufigkeit", "Involvement")
+) |>
+  as_tibble()
+```
+
+Anschaulicher wird es, wenn wir diese Vorhersagen auch grafisch darstellen.
+
+```{r}
+marginaleffects::avg_predictions(results_involve,
+  variables = c("Placementhäufigkeit", "Involvement")
+) |>
+  as_tibble() |>
+  ggplot(aes(
+    x = Placementhäufigkeit, y = estimate,
+    ymin = conf.low, ymax = conf.high,
+    group = Involvement, color = Involvement
+  )) +
+  geom_pointrange(position = position_dodge(.5)) +
+  geom_line(position = position_dodge(.5)) +
+  labs(y = "Vorhergesagtes Störempfinden")
+```
+
+## Metrischer Moderator
+
+Wie bei der Moderationsanalyse mit dem kategoriellen Moderator verwenden wir die `lm()`-Funktion und benutzen das Sternchen (`*`) für die Interaktion. Dieses mal wird jedoch die metrische Variable Bekanntheit als Moderator genommen.
+
+```{r}
+results_bekannt <- lm(Störempfinden ~ Placementhäufigkeit * Bekanntheit, data = d_pp2)
+report::report_table(results_bekannt)
+```
+
+Es zeigt sich, dass eine höhere Placementhäufigkeit (15 Placements) einen signifikant positiven Einfluss auf das Störempfinden hat (B = 1.24, p = .011). Die Bekanntheit alleine hat keinen signifikanten Einfluss (p = .501), und der Interaktionseffekt von Placementhäufigkeit und Bekanntheit ist auch nicht signifikant (B = -0.42, p = .077). Wir stellen fest, dass eine höhere Anzahl an Placements das Störempfinden steigert, jedoch nicht durch die Bekanntheit moderiert wird.
+
+### Durchschnittliche Effekte: AME
+
+Wir wiederholen an dieser Stelle das Vorgehen aus dem vorherigen Kapitel und berechnen die Haupteffekte mittels `avg_slopes()`.
+
+```{r}
+marginaleffects::avg_slopes(results_bekannt) |>
+  as_tibble()
+```
+
+Die Berechnungen zeigen einen negativen Effekt der Bekanntheit (B = -0.0991), der jedoch statistisch nicht signifikant ist (p = .402). Im Gegensatz dazu weist die höhere Placementhäufigkeit (15 Placements) einen positiven und statistisch signifikanten Effekt auf das Störempfinden auf (B = 0.493, p = .0361).
+
+### Konditionale Effekte: Zentrierung
+
+Als erstes wird die Variable mit der `scale()`-Funktion zentriert, das heißt, der Mittelwert wird abgezogen, um die zentrierte Variable `Bekanntheit_c` zu erhalten. Dann wiederholen wir den Schritt der Moderationsanalyse mit dem metrischen Moderator, nur dass wir jetzt die zentrierte Bekanntheit als Moderator verwenden.
+
+```{r}
+d_pp2 <- d_pp2 |>
+  mutate(Bekanntheit_c = scale(Bekanntheit, scale = F))
+
+lm(Störempfinden ~ Placementhäufigkeit * Bekanntheit_c, data = d_pp2) |>
+  report::report_table()
+```
+
+Die Zentrierung hat in diesem Fall keine signifikante Änderung der Ergebnisse gebracht. Der Effekt von Bekanntheit bleibt statistisch nicht signifikant, und auch der Interaktionseffekt von Placementhäufigkeit und Bekanntheit_c ist weiterhin nicht signifikant (p = .077).
+
+### Konditionale Effekte: Pick-a-point
+
+Die Methode Pick-a-point wird in der Analyse von konditionalen Effekten verwendet, um zu untersuchen, wie sich eine unabhängige Variable (in diesem Fall Placementhäufigkeit) auf eine abhängige Variable (hier Störempfinden) auswirkt, während die Werte einer moderierenden Variablen (hier Bekanntheit) fixiert werden.
+
+Dafür verwenden wir wieder die `avg_slopes()`-Funktion und das Funktionsargument `by`, wie bei dem Kategorieller Moderator und die Konditionale Effekte nach Gruppen.
+
+```{r}
+marginaleffects::avg_slopes(results_bekannt,
+  variables = "Placementhäufigkeit", by = "Bekanntheit"
+) |>
+  as_tibble()
+```
+
+Wir erkennen, dass nur der Effekt für die Bekanntheit mit dem Wert 1 signifikant ist (p \< .05), was darauf hindeutet, dass bei einer Bekanntheit von 1 der Einfluss der Placementhäufigkeit auf das Störempfinden positiv und signifikant ist. Die anderen Werte der Bekanntheit sind nicht signifikant, was darauf hindeutet, dass die Beziehung zwischen Placementhäufigkeit und Störempfinden in diesen Fällen weniger ausgeprägt oder möglicherweise nicht vorhanden ist.
+
+### Modellvorhersagen und -visualisierung
+
+Mit `avg_predictions()`erstellen wir eine Modellvorhersage und hängen sie mithilfe der Pipe an die Visualisierung.
+
+```{r}
+marginaleffects::avg_predictions(results_bekannt,
+  variables = c("Placementhäufigkeit", "Bekanntheit")
+) |>
+  as_tibble() |>
+  filter(Bekanntheit %in% c(1, 4)) |>
+  mutate(Bekanntheit = if_else(Bekanntheit == 1, "unbekannt", "sehr bekannt")) |>
+  ggplot(aes(
+    x = Placementhäufigkeit, y = estimate,
+    ymin = conf.low, ymax = conf.high,
+    group = Bekanntheit, color = Bekanntheit
+  )) +
+  geom_pointrange(position = position_dodge(.5)) +
+  geom_line(position = position_dodge(.5)) +
+  labs(y = "Vorhergesagtes Störempfinden", color = "Bekanntheit des Produkts")
+```
+
+::: callout-tip
+### Weiterführende Materialien
+
+Weitere detaillierte Beispiele mit R-Code und Daten finden sich in den Materialien zur Vorlesung [Anwendungsorientierte Analyseverfahren](https://stats.ifp.uni-mainz.de/ba-aa-vl/), u.a. zu
+
+-   Moderationsanalyse mit kategoriellen und metrischen Moderatoren
+-   Modellvorhersagen und -visualisierungen
+:::
+
+## Glossar
+
+```{r, purl = F, echo = F}
+source("glossar.R")
+glossar("marginaleffects::avg_slopes|marginaleffects::avg_predictions")
+```
+
+## Hausaufgabe
+
+McNulty et al. (2008) fanden in einer Studie mit frisch verheirateten Paaren einen Zusammenhang zwischen der Attraktivität einer Person und wie sehr sie ihren Partner unterstützt. Ist dieser Zusammenhang abhängig vom Geschlecht der Person? Schätzen, interpretieren und visualisieren sie den Zusammenhang. (Datensatz `mcnulty.sav`)

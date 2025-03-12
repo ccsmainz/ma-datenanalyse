@@ -1,0 +1,213 @@
+# Konfirmatorische Faktorenanalyse
+
+::: callout-tip
+### Quelle
+
+@schnauber2017
+
+[Variablenübersicht](https://stats.ifp.uni-mainz.de/ba-datenanalyse/data/variablenuebersicht_gewohnheiten.pdf)
+:::
+
+## Pakete und Daten
+
+Wir laden zunächst die notwendigen R-Pakete.
+Für die konfirmatorische Faktorenanalyse benötigen wir das das `lavaan`-Paket, für die Reliabilitätsbestimmung `semTools`.
+Wie immer laden wir außerdem `tidyverse` und `report`.
+
+```{r}
+library(lavaan)
+library(semTools)
+library(tidyverse)
+library(report)
+```
+
+Für die konfirmatorische Faktorenanalyse nutzen wir wieder den Excel-Datensatz `gewohnheiten.xlsx`.
+
+```{r}
+d_habit <- readxl::read_excel("data/gewohnheiten.xlsx")
+d_habit
+```
+
+## Überprüfung der Items
+
+Zunächst machen wir uns wie immer mit den relevanten Variablen vertraut und nutzen dafür die `report_table()`-Funktion.
+Wir nutzen wieder die Skala für die Gewohnheitsstärke bei der Computer-Nutzung (`c_srhi_X`), die wir für die weiteren Schnitte ausschneiden und in einem neuen Datensatz speichern.
+
+```{r}
+d_cfa <- d_habit |>
+  select(c_srhi_r1:c_srhi_c2)
+
+d_cfa |>
+  report::report_table()
+```
+
+Die Ergebnisse der explorativen Faktoranalyse zur Gewohnheitsstärke bei der Computernutzung (Variablen `c_srhi_X`) haben drei Faktoren offengelegt: die fehlende Bewusstheit der Computernutzung, den Wiederholungscharakter der Computernutzung und die geringe Kontrollierbarkeit der Computernutzung.
+Hätten wir uns eingehend mit Gewohnheiten bei der Mediennutzung befasst, hätten wir diese drei Dimensionen auch theoretisch herleiten können [vgl. @schnauber2017].
+Mit der konfirmatorischen Faktoranalyse (CFA) testen wir, ob die Items tatsächlich die drei Dimensionen abbilden können, d.h.
+im Gegensatz zur explorativen Faktorenanalyse wird nicht nur die Anzahl der Faktoren, sondern auch konkret die Zugehörigkeit der Items zu den Faktoren sowie deren Korrelationen untereinander getestet (sog. Messhypothesen).
+
+Grundsätzlich sollten die Items, die wir für eine konfirmatorische Faktoranalyse verwenden wollen, ein metrisches Skalenniveau aufweisen (d.h. mindestens intervallskaliert) oder dichotom sein.
+Die verwendeten Items sind alle auf einer 5-er Skala erhoben und wenigstens quasi-metrisch.
+
+````{=html}
+<!--
+Bei jeder konfirmatorischen Faktorenanalyse sollten wir zusätzlich prüfen, ob die Annahme der multivariaten Normalverteilung erfüllt ist. Dazu dient die Funktion `mardia()` aus dem Paket `psych`, die den Mardia-Test auf multivariate Schiefe und Kurtosis berechnet.
+
+```{r}
+d_cfa |>
+  psych::mardia(plot = FALSE) # Wir sollten MLR anstelle von ML verwenden.
+```
+
+Beide Tests sind signifikant, was darauf hindeutet, dass diese Annahme verletzt ist. Das ist an sich nicht problematisch, aber wir sollten bei der Anpassung des konfirmatorischen Modells einen robusten Schätzer verwenden.
+
+-->
+````
+
+## Modellschätzung
+
+Für die Modellschätzung (d.h. wir gehen von drei Dimensionen bei der Gewohnheitsstärke aus) nutzen wir das Paket `lavaan`, das wir schon aus dem Kapitel zur Pfadanalyse kennen (Messmodelle sind nichts anderes als Strukturgleichungsmodelle).
+Auch hier wird zunächst das Modell spezifiziert und anschließend mit den empirischen Daten geschätzt.
+
+Wir definieren im `lavaan`-Modell jede latente Variable bzw.
+Faktor mit einem `character`-Objekt im folgenden Format:
+
+```         
+latente_variable =~ variable1 + variable2 + ... + variable_n
+```
+
+Für unsere CFA mit 3 Faktoren heißt das:
+
+```{r}
+cfa_model <- "
+   repetition =~ c_srhi_r1 + c_srhi_r2 + c_srhi_r3
+   automatism =~ c_srhi_a1 + c_srhi_a2 + c_srhi_a3 + c_srhi_a4 + c_srhi_a5 + c_srhi_a6
+   control =~ c_srhi_c1 + c_srhi_c2
+"
+```
+
+Im nächsten Schritt nutzen wir die Funktion cfa() mit unserer Spezifikation, das die latenten Faktoren enthält.
+
+```{r}
+cfa_results <- lavaan::cfa(cfa_model, data = d_cfa)
+```
+
+Sobald das Modell geschätzt wurde, können wir uns mit Hilfe der Funktion `summary()` eine Modellzusammenfassung ansehen.
+Dabei fordern wir sowohl Modellgütemaße als auch vollstandardisierte Koeffizienten (z.B. für Faktorladungen) an.
+
+```{r}
+summary(cfa_results, fit = TRUE, std = TRUE)
+```
+
+Die Ausgabe besteht aus drei Teilen:
+
+-   Die Kopfzeile: Informationen über Lavaan, die Optimierungsmethode, die Anzahl der freien Parameter und die Anzahl der in der Analyse verwendeten Beobachtungen (in diesem Fall *n* = 770)
+-   Informationen zum Modellfit: Enthält verschiedene Anpassungsindizes zur Bewertung der Modellanpassung
+-   Parameter-Schätzunger: Der letzte Abschnitt enthält alle Parameter, die geschätzt wurden (einschließlich der Faktorladungen, Varianzen, Schwellenwerte...)
+
+Zunächst schauen wir, ob das Modell konvergiert ist, dann auf die Fit-Indizes .
+
+Eine signifikante Teststatistik (ein signifikanter Chi-Quadrat-Wert) weist auf eine Diskrepanz zwischen dem vorgeschlagenen Modell und den beobachteten Daten hin (Nullhypothese: die modellimplizierte Kovarianzmatrix entspricht der empirischen Kovarianzmatrix).
+Der signifikante Chi-Quadrat-Wert zeigt, dass das Modell nicht perfekt zu den Daten passt, was aber bei größeren Stichproben häufig vorkommt, da dort auch kleinere Abweichungen signifikant sind.
+Daher betrachten wir auch immer eine Reihe von alternativen Fit-Indizes.
+
+::: {.callout-tip collapse="true"}
+## Fit-Indizes für die CFA
+
+-   CFI (Comparative Fit Index) und TLI (Tucker-Lewis-Index) messen die Verbesserung der Modellanpassung im Vergleich zu einem Basismodell, in dem nichts korreliert.
+    Sie sollten bei guten Modellen \>= 0.95 sein.
+
+-   RMSEA (Root mean Square Error of Approximation) bewertet die Modellpassung zwischen dem Modell und den beobachteten Daten unter Berücksichtigung des Approximationsfehlers, sollte \<= 0.05 und nicht signifikant sein.
+
+-   SRMR (Standardized Root Mean Square Residual): misst die standardisierte Diskrepanz zwischen beobachteten und modellimplzierten Korrelationen zwischen den gemessenen Variablen.
+    Ein kleinerer SRMR-Wert zeigt eine bessere Anpassung an, sollte \<= 0.08, besser \<= .05 sein.
+:::
+
+Im Beispiel ist der Chi-Quadrat-Test signifikant $\chi^2$(41) = 301.6, p \< .05, CFI und TLI liegen unter 0.95, RMSEA über 0.05, d.h.
+diese Anpassungsindizes weisen auf einen moderaten bis schlechten Modelfit hin, auch wenn der SRMR befriedigend ist.
+
+Betrachten wir anschließend die standardisierten Faktorladungen, können wir sehen, dass die meisten Items recht hoch auf "ihren" Faktor laden (\>= .7).
+Das bedeutet, dass die latente Variable mindestens 50% der Varianz in den Items erklären kann ($R^2$ = .7\^2 = .49) Kurz, es gibt noch Verbesserungsbedarf, aber die Skala scheint die angenommene dreidimensionale Faktorstruktur zu haben.
+Die Faktoren Kontrolle und Wiederholung korrelieren sehr stark (r = .648), Wiederholung und Automatismus hingegen fast gar nicht, wie wir im Abschnitt `Covariances` des Outputs sehen können.
+
+## Modellverbesserung
+
+Was kann die Ursache für fehlende Modellgüte sein?
+
+-   Einige Items gehören zu einem anderen oder auch zu gar keinem der spezifizierten Faktoren, sie sind schlicht keine validen Indikatoren des Konstrukts.
+-   Einige Items gehören zu mehr als einem spezifizierten Faktor, d.h. es gibt nicht-modellierte Doppelladungen, deren Nicht-Berücksichtigung den Modellfit verschlechtern.
+-   Die Variablen sind nicht (annähernd) normalverteilt, so dass man mit einem anderen Schätzverfahren arbeiten sollte.
+-   Die Messhypothesen sind schlicht falsch, d.h. die unterstellte Faktorstruktur stimmt insgesamt nicht
+
+### Faktorladungen
+
+Bei den Faktorladungen sehen wir, dass wieder das Item `c_srhi_a4` deutlich geringer lädt als die anderen (wie bei der explorativen Faktoranalyse auch).
+Wir könnten daher versuchen, durch das Weglassen von `c_srhi_a4` den Modellfit zu verbessern.
+Beim Löschen von Items muss allerdings auch der Validitätsaspekt berücksichtigt werden.
+Eine Skala mit vielen fast identisch formulierten Items wird eine hohe Reliabilität und Items hohe Ladungen haben, allerdings auch nur einen (zu) schmalen Aspekt des theoretischen Konstrukts abdecken, daher muss man überlegen, ob das zu löschende Item aus dieser Perspektive verzichtbar ist.
+
+```{r}
+cfa_model2 <- "
+   repetition =~ c_srhi_r1 + c_srhi_r2 + c_srhi_r3
+   automatism =~ c_srhi_a1 + c_srhi_a2 + c_srhi_a3 + c_srhi_a5 + c_srhi_a6
+   control =~ c_srhi_c1 + c_srhi_c2
+"
+
+cfa_results2 <- lavaan::cfa(cfa_model2, data = d_cfa)
+summary(cfa_results2, fit = T, std = T)
+```
+
+Der Chi-Quadrat-Test ist zwar immer noch signifikant, CFI und TLI haben sich verbessert, RMSEA liegt unter 0.05 und SRMR liegt unter 0.08, passt also.
+Wir könnten also noch weiter versuchen, unser Modell zu verbessern.
+
+### Modification Indices
+
+Hierfür könnten wir uns die sog.
+*Modification Indices* (MI) des Modells ansehen, die wir mit der entsprechenden Funktion `modificationindices()` erhalten.
+Jeder MI gibt die Verbesserung des Modells (=Reduktion des Chi-Quadrat-Werts) wieder, wenn wir den vorgeschlagenen Parameter (Ladung, Korrelation, etc.) zum Modell hinzufügen würden.
+Die Spalte `mi` im Output-Tibble enthält den eigentlichen Modification Index, d.h.
+wir können absteigend danach sortieren und uns nur die 5 größten MI ausgeben lassen, die also das Modell am meisten verbessern würden.
+
+```{r}
+lavaan::modificationindices(cfa_results2) |>
+  arrange(desc(mi)) |>
+  head(5)
+```
+
+Wir sehen in den ersten beiden Zeilen das Item `c_srhi_a5`: In Zeile 1 wird eine Doppelladung `repetition =~ c_srhi_a5` vorgeschlagen, d.h.
+das Item spiegelt nicht nur den Automatismus-, sondern z.T.
+auch den Wiederholungsaspekt wider.
+In Zeile 2 wird vorgeschlagen, doch die Items a2 und a5 korrelieren zu lassen `~~`, was ein Indikator dafür ist, dass beide Items *außer* dem Automatisierungsaspekt noch eine Gemeinsamkeit haben.
+Beide MI-Vorschläge würden die gewünschte Einfachstruktur (jedes Item gehört zu genau einem Faktor) der Skala verändern, weshalb wir vielleicht `c_srhi_a5` auch entfernen sollten, zumal das Item auch noch auf die Kontrolldimension laden würde, siehe Zeile 4.
+
+## Reliablität
+
+Zum Schluss können wir uns noch die Realiabilität der fertigen Skala ansehen.
+Neben Cronbachs Alpha werden noch weitere Reliabilitätskoeffizienten ausgegeben (Bollen's ω (omega), Bentler's ω (omega2) und McDonald's ω (omega3)), die auf dem geschätzten CFA-Modell basieren und weniger (falsche) Annahmen über die Faktorstruktur haben als Alpha.
+Bei einem guten Modell unterscheiden sich die Werte nicht sehr stark, enthält das Modell Items mit niedrigen Faktorladungen, die aber trotzdem klar zu einem Faktor gehörten, weichen die Omega-Werte erheblich von Alpha ab.
+Alle Werte liegen zwischen 0 und 1, wobei Werte, die näher bei 1 liegen, für eine gute Reliabilität stehen (vgl. das dazugehörige Kapitel in der BA-Statistik).
+Die letzte Zeile `avevar` bezeichnet die *Average Variance Extracted*, also die durchschnittlichen quadrierten Faktorladungen, die äquivalent zum o.g.
+$R^2$ sind, d.h.
+wieviel Varianz in den Items durch die latente Variable erklärt werden kann.
+Auch hier sind höhere Werte besser, was bei allen drei Subskalen der Fall ist.
+
+```{r}
+semTools::reliability(cfa_results2)
+```
+
+::: callout-tip
+### Weiterführende Materialien
+
+Das Codebuch für den Datensatz gewohnheiten.xlsx finden Sie hier: [Bachelor Kursmaterialien](https://stats.ifp.uni-mainz.de/ba-datenanalyse/#kursmaterialien)
+:::
+
+## Glossar
+
+```{r, purl = F, echo = F}
+source("glossar.R")
+glossar("lavaan::cfa|lavaan::modificationindices|semTools::reliability")
+```
+
+## Hausaufgabe
+
+Sie möchten prüfen, ob die Items zur Gewohnheitsstärke auch bei der Smartphonenutzung die drei Dimensionen abbilden. Die Items sind in den elf Variablen `s_srhi_X` enthalten.
+Definieren und schätzen Sie das Modell. Passt das Modell zu den Daten? Wie kann man ggf. das Modell verbessern?

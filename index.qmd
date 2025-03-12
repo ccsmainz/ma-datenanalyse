@@ -1,0 +1,16 @@
+## Willkommen {.unnumbered}
+
+Dies ist die Website des Seminars Fortgeschrittene Datenanalyse am [Institut für Publizistik](https://www.ifp.uni-mainz.de){target="_blank"} der Johannes-Gutenberg Universität Mainz.
+
+Grundlagen von R und Datenanalyse finden sich im Kursmaterial zur [BA Datenanalyse](https://stats.ifp.uni-mainz.de/ba-datenanalyse/).
+
+## Kursmaterialien
+Alle Materialien in Form von R-Code und Datensätzen sind [hier als ZIP-Datei](ma-datenanalyse.zip) verfügbar. Wenn Sie den Ordner entpackt und die Projekt-Datei `MA-Datenanalyse.Rproj` geöffnet haben, können Sie alle Analysen auf den nachfolgenden Seiten sowie eigene Hausaufgaben und Übungen darin durchführen.
+
+## Kleingedrucktes 
+
+Inhalte: Michael Scharkow, Nora Denner
+
+Lizenz:  [CC-BY-SA](https://creativecommons.org/licenses/by-sa/4.0/deed.de){target="_blank"}
+
+Erstellt mit [Quarto](https://www.quarto.org){target="_blank"}, [R](https://www.r-project.org/){target="_blank"} und dem [tidyverse](https://www.tidyverse.org/){target="_blank"}.

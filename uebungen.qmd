@@ -1,0 +1,60 @@
+# Übungen {.unnumbered}
+
+## Übung 1
+
+Für diese Übungssitzung analysieren wir den Datensatz `Faehnrich_2020.sav`, in dem Posts von verschiedenen Universitäts-Facebook-Seiten, einige Inhaltsvariablen und deren Resonanz-Metriken enthalten sind. 
+
+### Aufgabe 1
+
+  1.	Analysieren Sie, welche Universität (`uni`) im Mittel die meisten Kommentare pro Post (`comments_count`) erhält (nur deskriptiv).
+  1.	Berichten Sie, wieviel Varianz in der Kommentarzahl auf Unterschiede zwischen den Uni-Facebook-Pages zurückzuführen sind.
+
+###	Aufgabe 2
+
+Die Posts sind verschiedenen Inhalts-Typen (`type`) zugeordnet (Link, Video, Foto, Status, Event und Note). 
+
+  1.	Analysieren Sie deskriptiv, wie häufig die verschiedenen Typen von Posts in der Stichprobe sind.
+  2.	Analysieren Sie, ob und wie die Anzahl der Likes (`likes_count`) durch den Typ des Posts beeinflusst wird. Welcher Post-Typ hat den stärksten Einfluss, welche Typen unterscheiden sich statistisch signifikant in den Likes?
+  3.	Visualisieren Sie das Ergebnis.
+
+### Aufgabe 3
+
+  1.	Prüfen Sie die Hypothese: "Immer wenn wir kürzere Posts als üblich schreiben, bekommen wir auch mehr Likes als sonst." (`word_count`)
+  2.	Prüfen Sie die Vermutung, dass dieser Zusammenhang nur bzw. besonders für Posts mit dem Thema Forschung gilt. (`topic_research`)
+  3.	Visualisieren Sie das Ergebnis.
+
+Für alle Aufgaben gilt:
+
+  - Geben Sie als Kommentar (mit # beginnend) an, welche Frage Sie bearbeiten, darunter folgt der zugehörige Code.
+  - Die Antwortsätze folgen darunter, ebenfalls als Kommentar (mit # beginnend).
+  - Der R-Code muss (wenigstens) komplett durchlaufen im Projekt, d.h. nicht funktionierenden Code auskommentieren und Frage als Kommentar dazu.
+  
+## Übung 2
+
+Für diese Übungssitzung analysieren wir den Datensatz `gewohnheiten.xlsx`, den wir schon aus verschiedenen Sitzungen kennen und der u.a. Skalen zur Messung der Gewohnheitsstärke bei der Nutzung von Fernsehen, Computer und Smartphone enthält.
+
+::: callout-tip
+### Codebuch
+
+Das Codebuch für den Datensatz gewohnheiten.xlsx finden Sie hier: [Bachelor Kursmaterialien](https://stats.ifp.uni-mainz.de/ba-datenanalyse/#kursmaterialien)
+::: 
+
+### Aufgabe 1
+
+a. Testen Sie die folgende Annahme mit dem geeigneten Verfahren: „Je stärker die empfundene Kompetenz bzgl. der Smartphonenutzung (`s_komp`) ist, desto höher ist die Nutzungsintensität (`i1_smartphone`). Dieser Zusammenhang wird von der Gewohnheitsstärke (`s_srhi_ges`) mediiert: Je höher die empfundene Kompetenz, desto höher die Gewohnheitsstärke, und je höher die Gewohnheitsstärke, desto höher die Nutzungsintensität.
+b. Gibt es Aspekte, die gegen ihre gewählte Vorgehensweise sprechen?
+
+###	Aufgabe 2
+
+Sie möchten wissen, ob und welche latenten Faktoren hinter den Trait-Selbstkonrolle-Items stehen. Die Items sind in den 13 Variablen `p_scx` enthalten. Wählen Sie eine geeignete Vorgehensweise und prüfen Sie, ob sich die Items für die Analyse eignen und benennen Sie die latenten Faktoren.
+
+### Aufgabe 3
+
+Testen Sie, ob das Geschlecht (`p_2`) der Proband:innen einen Einfluss auf den Wiederholungscharakter bei der Smartphone-Nutzung hat. Modellieren Sie den Wiederholungscharakter als latenten Faktor basierend auf dem Items (`s_srhi_r1:s_srhi_r3`).
+
+
+Für alle Aufgaben gilt:
+
+  - Geben Sie als Kommentar (mit # beginnend) an, welche Frage Sie bearbeiten, darunter folgt der zugehörige Code.
+  - Die Antwortsätze folgen darunter, ebenfalls als Kommentar (mit # beginnend).
+  - Der R-Code muss (wenigstens) komplett durchlaufen im Projekt, d.h. nicht funktionierenden Code auskommentieren und Frage als Kommentar dazu.

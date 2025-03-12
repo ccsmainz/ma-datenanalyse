@@ -1,0 +1,258 @@
+---
+bibliography: references.bib
+---
+
+# Multilevel-Längsschnittanalyse
+
+::: callout-tip
+### Quelle
+
+@johannes2022
+:::
+
+## Pakete und Daten
+
+Wir laden zunächst die notwendigen R-Pakete. Für die Fixed-Effect-Modelle verwenden wir `plm`, für die Multilevel-Analysen das `lme4`-Paket, für die Modellvorhersagen `marginaleffects`. Wie immer laden wir `tidyverse` und `report` und setzen ein schöneres Theme.
+
+```{r}
+library(plm)
+library(lme4)
+library(marginaleffects)
+
+library(tidyverse)
+library(report)
+theme_set(theme_minimal())
+```
+
+Als Datensatz verwenden wir eine Studie von Johannes et al., bei der dieselben Befragten 6 Wochen lang unterschiedliche Mediennutzung und Lebenszufriedenheit berichtet haben. Der Datensatz ist im sog. Langformat, d.h. die Daten aller Wellen werden aufeinander gestapelt, dementsprechend gibt es n = Personen x Wellen Datenzeilen. Die Personen sind mit der Variable `id` gekennzeichnet, die Erhebungswoche mit `wave`. Die weiteren Variablen geben dann jeweils die Messung einer Person in einer Woche wieder, stabile Personenmerkmale wie Alter wiederholen sich entsprechend pro Person.
+
+```{r}
+d_johannes <- read_rds("data/johannes_etal.rds") |>
+  filter(wave >= 2) |>
+  filter(!is.na(tv_time))
+d_johannes
+```
+
+Da der Datensatz im sog. Langformat ist, gibt es mehrere Zeilen pro Person (eine pro Welle). Wir zählen mit `n_distinct()` die tatsächliche Personenstichprobe:
+
+```{r}
+n_distinct(d_johannes$id)
+```
+
+Zudem schauen wir uns die Deskriptivstatistiken der relevanten Variablen an.
+
+```{r}
+d_johannes |>
+  select(wave, life_satisfaction, tv_time, gender) |>
+  report::report_table()
+```
+
+Wir können an der Deskriptivstatistik erkennen, dass Daten über 5 Wochen (Wave 2-6, Woche 1 ist laut Autoren problematisch und wird daher ausgeschlossen) vorliegen und die Befragten im Mittel etwas über 3,5h TV am Tag sehen (SD 3,3h). 
+
+## OLS Modelle
+
+### Naives Model (pooling)
+
+Im folgenden Beispiel wollen wir den Zusammenhang zwischen der TV-Nutzung und allgemeiner Lebenszufriedenheit untersuchen. Das naive Regressionsmodell ignoriert die Schachtelung bzw. Nicht-Unabhängigkeit der Daten und tut so, als hätten wir n = 8882 unabhängige Fälle. 
+
+
+```{r}
+results_ols <- lm(life_satisfaction ~ tv_time, data = d_johannes)
+report::report_table(results_ols)
+```
+
+Der Effekt der TV-Nutzung ist negativ und statistisch signifikant, aber wir wissen das dieser Schätzer und der Standardfehler verzerrt sind. 
+
+
+### Fixed Effects Modell
+
+
+Ein (vor allem in Politik- und Wirtschaftswissenschaften) weit verbreiteter Ansatz für die Analyse von Paneldaten ist das Fixed Effects (FE) Modell, durch das alle (beobachteten wie unbeobachteten) Unterschiede in der Lebenszufriedenheit zwischen den Befragten im Modell herausgerechnet werden. Technisch geht dies über zwei Wege:
+
+  1. De-meaning, d.h. von allen individuellen Werten der Prädiktoren wird der Personenmittelwert abgezogen, d.h. der neue Prädiktor ist als Abweichung vom Mittelwert zu verstehen. Der Regressionskoeffizient dieser Variable ist der Within-Effekt.
+  2. Die Befragten-ID als nominale (Dummy-)Koviate in das Modell integriert wird (Least Squares Dummy Variable, LSDV-Modell), der dann übrig bleibende Effekt der TV-Nutzung auf die Lebenszufriedenheit ist der Within-Effekt. 
+
+Beide Ansätze werden als FE-Modell bezeichnet, die Koeffizienten als Within-Person-Effects. 
+
+Für das De-Meaning verwenden wir einfach die Kombination aus `group_by()` und `mutate()`. Anschließend schätzen wir das Modell mit dem neuen Prädiktor, aber ohne Konstante (`-1 + ...`) im Modell. Die Within-Variable ist die Abweichung der (wöchentlichen) TV-Nutzung vom Personenmittelwert. Wenn eine Befragte im Mittel über alle Wochen 4h TV pro Tag nutzt, aber in Woche 3 nur 2h, dann bekäme sie in diesem Fall den Wert -2. Dies führt dazu, dass wir den Koeffizienten dieser Within-Variable dahingehend interpretieren können, dass die Lebenszufriedenheit derselben Person um B Einheiten sinkt/steigt, wenn sie in einer Woche eine Stunde mehr TV gesehen hat als sonst.
+
+
+```{r}
+d_johannes <- d_johannes |>
+  group_by(id) |>
+  mutate(tv_time_within = tv_time - mean(tv_time, na.rm = TRUE))
+
+results_fe_demean <- lm(life_satisfaction ~ -1 + tv_time_within, d_johannes)
+report::report_table(results_fe_demean)
+```
+
+Der Koeffizient gibt den Within-Person-Effekt wieder, er ist nicht signifikant. Allerdings stimmen beim manuellen De-Meaning und anschließenden Schätzen ohne Intercept die Freiheitsgrade nicht, und damit auch die p-Werte und CI. Daher empfiehlt es sich, für FE-Modell spezielle R-Pakete zu verwenden, z.B. `plm`.
+
+```{r}
+results_fe <- plm::plm(life_satisfaction ~ tv_time, index = "id", data = d_johannes, model = "within")
+summary(results_fe)
+```
+
+
+::: callout-important
+### LSDV- vs. FE-Modell
+
+Da das LSDV-Modell mit `lm()` und vielen Befragten sehr lange zu schätzen braucht, illustrieren wir diesen Ansatz hier mit einem kleinen Datensatz von 10 Befragten:
+
+```{r, echo = F, purl = F}
+set.seed(1234)
+```
+
+
+```{r, purl = F}
+d_johannes10 <- d_johannes |>
+  filter(id %in% sample(d_johannes$id, size = 10))
+
+lm(life_satisfaction ~ -1 + tv_time + id, data = d_johannes10) |>
+  report::report_table() |>
+  head(3)
+```
+
+Die Personen-Fixed-Effects interessieren uns substanziell nicht, sondern nur der TV-Nutzungseffekt, der den vorausgesagten Zuwachs/Verlust an Lebenszufriedenheit bei ein und derselben Person widergibt, wenn diese eine Stunde mehr fernsehen würde.
+
+Hier das klassische FE-Modell mit `plm()`.
+
+```{r, purl = F}
+plm::plm(life_satisfaction ~ tv_time, data = d_johannes10, model = "within", index = "id") |>
+  summary()
+```
+
+
+ Die "Vergleichsgruppe" sind im Gegensatz zum naiven Modell also nicht (nur) die anderen Personen, sondern ausschließlich die anderen Messungen derselben Person. Dies wird als kausaler Effekt der TV-Nutzung auf die Lebenszufriedenheit interpretiert. Im vorliegenden Beispiel ist der Effekt praktisch null (wobei wir nur eine kleine Substichprobe untersucht haben).
+
+:::
+
+Der zentrale Nachteil des FE-Modells ist die Tatsache, dass wir keine nicht-variierenden Personenmerkmale als Prädiktor ins Modell aufnehmen können, z.B. Geschlecht:
+
+```{r}
+results_fe_gender <- plm::plm(life_satisfaction ~ tv_time + gender, data = d_johannes, model = "within", index = "id")
+summary(results_fe_gender)
+```
+
+Weil alle beobachteten (und nicht beobachteten) Unterschiede zwischen den Befragten beim LSDV-Modell schon durch die `id`-Kovariate abgebildet werden bzw. beim FE-Modell die Unterschiede zwischen Personen verschwinden, sind alle Personenvariablen wie Alter oder Geschlecht perfekt multikollinear, und wir erhalten daher keine Schätzung für ihren Einfluss. Wenn wir gleichsam die Nicht-Unabhängigkeit der Daten und Personen-Kovariaten berücksichtigen wollen, brauchen wir ein alternatives Modell, das Random Effects Modell.
+
+## Multilevel-Modelle
+
+### Random Effects Modell
+
+Im Random Effects Modell werden nicht mehr alle Befragten als fixe Variablen ins Modell genommen, sondern es wird ein Multilevel-Modell geschätzt, bei dem Messungen auf Level 1 sind und Befragte auf Level 2. Die Annahme dabei ist, dass die Unterschiede in der mittleren Lebenszufriedenheit der Befragten einer Normalverteilung folgen, d.h. manche Befragten sind im Mittel (un-)zufriedener als andere. Diese Modell wird als Random Intercept Modell bezeichnet, wobei random hier nicht bedeutet, dass die Intercepts pro Person rein zufällig streuen, sondern sie einer Zufallsvariable (Normalverteilung) entsprechen, daher bezeichnen wir es auch lieber als Varying Intercept Modell
+
+In R kann man Multilevel-Modelle mit dem `lme4`-Paket schätzen. Die Random (oder besser: nach Personen variierenden) Intercepts werden mit `(1 | id)` spezifiziert.
+
+
+```{r}
+results_re <- lme4::lmer(life_satisfaction ~ tv_time + (1 | id), data = d_johannes)
+report::report_table(results_re)
+```
+
+Die Ergebnisse des RE-Modells zeigen einen winzigen, nicht-signifikanten Effekt der TV-Nutzung auf die Lebenszufriedenheit, was den Ergebnissen des naiven OLS-Modells oben widerspricht. 
+
+Im Gegensatz zum FE-Modell ist es problemlos möglich, beliebige variierende oder stabile (Personen-)Variablen als Prädiktoren in das Modell aufzunehmen, z.B. wieder Geschlecht:
+
+```{r}
+results_re_gender <- lme4::lmer(life_satisfaction ~ tv_time + gender + (1 | id), data = d_johannes)
+report::report_table(results_re_gender)
+```
+
+Wir erkennen, dass es keine signifikanten Geschlechtsunterschiede in der Lebenszufriedenheit gibt, obwohl zumindest in der Stichprobe Frauen und vor allem andere Geschlechter etwas weniger zufrieden sind. 
+
+### REWB Modell
+
+Obwohl das RE-Modell deutlich flexibler in der Anwendung ist, wird es in der Praxis oft kritisiert, weil beim RE-Modell **nicht** gewährleistet ist, dass der Effekt des Prädiktors als kausaler Effekt unter Kontrolle aller beobachteten und unbeobachteten Unterschiede zwischen den Befragten zu interpretieren ist. Dies kann man aber durch eine spezielle Spezifikation des Modells als Random Effects Within-Beween Modell beheben, dass die Vorteile des FE-Modells (unverzerrter Schätzer des kausalen Within-Person Effekts) mit denen des RE-Modells (flexible Integration weiterer Kovariaten) verbindet.
+
+Praktisch wird jede Prädiktorvariable in einen Within-Person und einen Between-Person-Bestandteil zerlegt. Die Between-Variable ist nichts anderes als der Personenmittelwert der TV-Nutzung einer Person über alle Wellen, also die mittlere TV-Nutzung pro Person.  Die Vergleichsgruppe sind also wie im FE-Modell nicht die anderen Personen, sondern die jeweils anderen Messungen derselben Person. Daher braucht sowohl das FE als auch das REWB-Modell min. 3 Messungen pro Person, um überhaupt Personen-Mittelwert und Abweichungen vom Mittelwert berechnen zu können. Wir nutzen wieder `group_by()` + `mutate()`, um zusätzlich zum Within-Prädiktor auch den Between-Prädiktor, also den Personenmittelwert ins Modell zu integrieren:
+
+
+```{r}
+d_johannes <- d_johannes |>
+  group_by(id) |>
+  mutate(
+    tv_time_between = mean(tv_time, na.rm = TRUE)
+  )
+```
+
+Anschließend schätzen wir das REWB-Modell, bei dem für TV-Nutzung nun zwei Prädiktorvariablen im Modell sind - einmal within einmal between.
+
+```{r}
+results_rewb <- lme4::lmer(life_satisfaction ~ tv_time_within + tv_time_between + (1 | id), data = d_johannes)
+report::report_table(results_rewb)
+```
+
+Wie können wir nun die beiden Koeffizienten interpretieren: Der (minimale und nicht-signifikante) Within-Effekt entspricht exakt dem FE-Modell und zeigt, dass intra-individuelle Schwankungen in der wöchentlichen TV-Nutzung nicht mit Schwankungen in der Lebenszufriedenheit einhergehen. TV-Nutzung macht die Befragten offenbar weder zufriedener noch unzufriedener. Wir sehen aber am negativen Between-Effekt, dass es Unterschiede in der mittleren Lebenszufriedenheit zwischen intensiven und sporadischen TV-Nutzerinnen gibt: Personen, die im Mittel mehr fernsehen, sind im Mittel etwas unzufriedener, oder anders formuliert: Personen, die im Mittel zufriedener sind, schauen im Mittel etwas weniger fern. Diesen Between-Effekt kann man aber **nicht** kausal interpretieren, sondern nur als Korrelation.
+
+Wir visualisieren hier noch einmal den Within-Effekt und sehen, dass selbst 10h mehr oder weniger tägliche TV-Nutzung als sonst die Lebenszufriedenheit nur minimal beeinflusst.
+
+```{r}
+preds_rewb <- marginaleffects::avg_predictions(results_rewb, variables = "tv_time_within")
+preds_rewb |>
+  ggplot(aes(x = tv_time_within, y = estimate, ymin = conf.low, ymax = conf.high)) +
+  geom_line() +
+  geom_ribbon(alpha = .1) +
+  labs(x = "difference in TV use (hours per day)", y = "Predicted life satisfaction")
+```
+
+Wie zuvor können wir weitere Kovariaten ins Modell aufnehmen, sowohl auf Ebene der wöchentlichen Messung als auch auf Personenebene. 
+
+```{r}
+results_rewb_gender <- lme4::lmer(life_satisfaction ~ tv_time_within + tv_time_between + gender + (1 | id), data = d_johannes)
+report::report_table(results_rewb_gender)
+```
+
+### Wachstumsmodell
+
+Neben den klassischen FE- und RE-Modellen sind sogenannte Wachstumsmodelle in den Sozialwissenschaften weit verbreitet, vor allem im Bereich der Entwicklungspsychologie oder Jugendmedienforschung. Hier geht es zunächst gar nicht darum, den (kausalen) Effekt einer Variable auf eine andere zu schätzen, sondern zunächst zu prüfen, ob ein Outcome sich über die Zeit (linear) verändert. In unserem Beispiel könnten wir fragen, ob sich die Lebenszufriedenheit im Laufe der fünfwöchigen Studienphase verändert hat. Hierfür verwenden wir die Zeitvariable `wave` einfach als numerischen Prädiktor, lassen aber weiterhin personenspezifische Mittel- bzw. Ausgangswerte (Random Intercepts) zu:
+
+```{r}
+results_time1 <- lme4::lmer(life_satisfaction ~ wave + (1 | id), data = d_johannes)
+report::report_table(results_time1)
+```
+
+In der Tat sehen wir einen winzigen, positiven, statistisch signifikanten Regressionskoeffizienten für Wave: Jede Woche nahm die mittlere Lebenszufriedenheit der Befragten um 0,02 (!) Skalenpunkte zu. Der Intercept gibt den geschätzten Ausgangswert zu Woche 0 wider, in dem aber gar keine Messung stattfand. Wir können aber den Intercept durch zentrieren der `wave`-Variable interpretierbarer machen.
+
+Mithilfe von Modellvorhersagen können wir das geschätzte Wachstum auch visualisieren:
+
+```{r}
+marginaleffects::avg_predictions(results_time1, variables = c("wave")) |>
+  ggplot(aes(
+    x = wave, y = estimate, ymin = conf.low, ymax = conf.high,
+  )) +
+  geom_line() +
+  geom_ribbon(alpha = .1) +
+  labs(x = "Week", y = "Predicted life satisfaction")
+```
+
+Bei Wachstumsmodellen ist die Annahmen zumeist, dass nicht alle Individuen sich gleichartig entwickeln: Manche Befragten werden mit der Zeit vielleicht sehr viel zufriedener, andere unzufriedener, andere sind immer gleich zufrieden. Um dies zu modellieren, können wir den Koeffizienten für das Wachstum auch nach Personen variieren lassen (Random bzw. Varying Slope). Wir gehen also davon aus, dass Befragte unterschiedliche Ausgangswerte **und** unterschiedliche Entwicklungsverläufe haben können. Dies spezifizieren wir durch den Term `(1 + wave | id)`, d.h. beides darf nach Personen variieren.
+
+```{r}
+results_time2 <- lme4::lmer(life_satisfaction ~ wave + (1 + wave | id), data = d_johannes)
+```
+
+Mit Hilfe der `anova()`-Funktion können wir die Güte der beiden Modelle vergleichen:
+
+```{r}
+anova(results_time1, results_time2)
+```
+
+Wir sehen, dass das Modell mit den variierenden Intercepts und Slopes signifikant besser zu den Daten passt, d.h. es gibt bedeutsame Heterogenität in der Entwicklung der Lebenszufriedenheit. Ändert dies etwas an unserem Punktschätzer für `wave`?
+
+```{r}
+report::report_table(results_time2)
+```
+
+Nein.
+
+## Glossar
+
+```{r, purl = F, echo = F}
+source("glossar.R")
+glossar("lme4::lmer")
+```
+
+## Hausaufgabe
+
+Untersuchen Sie den (kausalen) Zusammenhang zwischen wöchentlicher Musiknutzung (`music_time`) und Lebenszufriedenheit mit einem FE oder REWB-Modell.

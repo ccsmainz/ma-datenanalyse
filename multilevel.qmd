@@ -1,0 +1,224 @@
+---
+bibliography: references.bib
+---
+
+# Multilevel-Modelle
+
+::: callout-tip
+### Quelle
+@zoizner2022
+:::
+
+## Pakete und Daten
+
+Wir laden zunächst wie immer die notwendigen R-Pakete. Für Multilevel-Modelle benötigen wir das `lme4`- und das `marginaleffects`-Paket. Wie immer laden wir außerdem `tidyverse` und `report`.
+Für eine schönere Darstellung der Plots setzen wir außerdem das Theme auf `theme_minimal`.
+
+```{r}
+library(lme4)
+library(marginaleffects)
+library(tidyverse)
+library(report)
+theme_set(theme_minimal())
+```
+
+Für die Multilevel-Analyse nutzen wir den Datensatz `zoizner_etal.csv`.
+Die Autor:innen untersuchen, inwieweit Bürger:innen nach dem Ausbruch der Covid19-Pandemie Informationen aus Quellen erhalten haben, deren Inhalte sie normalerweise nicht unbedingt konsumieren. 
+Dazu führten sie eine zweiwellige Panelbefragung in 17 Ländern vor und nach dem Ausbruch der Pandemie durch. 
+Der Datensatz enthält unter anderem die folgenden Variablen: Cross-cutting Exposure in Bezug auf traditionelle Medien (wie häufig werden Personen mit Informationen aus Quellen konfrontiert, deren Inhalte sie normalerweise nicht konsumieren), Besorgnis über die COVID-19-Pandemie und das Land, aus dem die Befragten stammen.
+
+Um die Cross-cutting Exposure zu bestimmen, wurden die Befragten zum einen nach der Häufigkeit der Nutzung bestimmer Medien (nie bis täglich) und ihrer politischen Einstellung (links bis rechts) gefragt. Zum anderen wurden die Medien mit Hilfe von Expert:innen nach ihrer Ideologie (links bis rechts) eingeordnet. Die politische Einstellung der Befragten wurde mit der ideologischen Einordnung der Medien und der Häufigkeit der Mediennutzung korreliert. 
+Die Variable Cross-Cutting Exposure nimmt einen Wert zwischen 0 und 1 an (je höher, desto mehr Cross-Cutting Exposure).
+
+```{r}
+d_zoizner <- read_csv("data/zoizner_etal.csv")
+d_zoizner
+```
+
+
+Multilevel-Modelle werden für die Analyse von hierarchisch geschachtelten Daten verwendet. Diese Datenstruktur liegt hier ebenfalls vor, da Befragte aus unterschiedlichen Ländern enthalten sind. Die Befragten können in Länder geschachtelt werden, sie bilden damit eine Ebene unterhalb der Länder. Entsprechend liegen in unserem Datensatz zwei Ebenen vor: die Länder (Level 2) und die Befragten (Level 1). Unsere abhängige Variable, die Cross-Cutting Exposure zu T2,wurde auf dem Befragtenlevel (Level 1) gemessen.
+
+Wir betrachten zunächst die Level-2-Variable (country), in dem wir uns die Anzahl der Befragten pro Land in unserer Stichprobe ausgeben lassen.
+
+```{r}
+count(d_zoizner, dCountry_W2)
+```
+
+Insgesamt sind Befragte aus 17 Ländern in der Stichprobe enthalten.
+
+Wie bei allen Analysen lohnt sich auch bei Mutlilevel-Modellen ein Blick auf die Verteilung der Outcome-Variable, in diesem Fall die Cross-Cutting Exposure zu T2 (Level 1). 
+
+```{r}
+d_zoizner |>
+  select(cross_cutting_consumption_w2_01) |>
+  report::report_sample()
+```
+
+Über alle Länder hinweg beträgt die durchschnittliche Cross-Cutting Exposure zum Zeitpunkt T2 .27 (_SD_ = .26).
+
+## Nullmodell und ICC
+
+Zunächst berechnen wir ein Nullmodel, welches Auskunft darüber gibt, wie sich die Varianz auf die verschiedenen Ebenen verteilt.
+Das Modell schätzt zunächst ohne erklärende Variablen die Durchschnittswerte der Variablen `cross_cutting_consumption_w2_01` und berücksichtigt dabei die zufälligen Abweichungen zwischen den Ländern (`dCountry_W2`).
+
+```{r}
+m0_cc <- lmer(cross_cutting_consumption_w2_01 ~ 1 + (1 | dCountry_W2), d_zoizner)
+```
+
+Diese Varianzen können wir nutzen, um den Intraklassenkorrelationskoeffizient (ICC) zu berechnen, der einen Hinweis darauf gibt, ob ein Multilevel-Modell überhaupt nötig ist.
+
+```{r}
+performance::icc(m0_cc)
+```
+
+Etwa 10% der Varianz der Cross-Cutting Exposure lässt sich ausschließlich durch Unterschiede zwischen den Ländern erklären.
+
+Wir können uns auch die vorhergesagte Cross-Cutting Exposure für die verschiedenen Länder ausgeben lassen. Dazu berechnen wir Modelvorhersagen mit der Funktion `avg_predictions()`.
+
+```{r}
+marginaleffects::avg_predictions(m0_cc, by = "dCountry_W2") |>
+  as_tibble()
+```
+Wie wir sehen, gibt es einige Unterschiede zwischen den Ländern, in Schweden und der Schweiz ist die vorhergesagte Cross-Cutting Exposure vergleichsweise hoch, während sie in Ungarn, Deutschland und Frankreich vergleichsweise niedrig ist. 
+Dies können wir uns auch grafisch darstellen lassen:
+
+```{r}
+marginaleffects::avg_predictions(m0_cc, by = "dCountry_W2") |>
+  as_tibble() |>
+  ggplot(aes(
+    x = reorder(dCountry_W2, estimate), y = estimate,
+    ymin = conf.low, ymax = conf.high
+  )) +
+  geom_pointrange() +
+  coord_flip() +
+  labs(x = "", y = "Predicted cross-cutting exposure")
+```
+
+## Varying Intercepts
+
+### Modellschätzung
+
+Nun fügen wir dem Nullmodell zwei Prädiktoren auf Level 1 hinzu, also auf Befragtenebene. Zum einen die Cross-Cutting Exposure zu T1 (`cross_cutting_consumption_w1_01` zum ersten Messzeitpunkt, also den autoregressiven Effekt), zum anderen die Bersorgnis aufgrund von Covid (`worried_from_covid_total_01`) . Das Modell enthält damit wieder eine Lagged Dependent Variable. 
+
+```{r}
+m1_cc <- lmer(cross_cutting_consumption_w2_01 ~ cross_cutting_consumption_w1_01 + worried_from_covid_total_01 +
+  (1 | dCountry_W2), d_zoizner)
+report::report_table(m1_cc)
+```
+
+Sowohl die Cross-Cutting Exposure zu T1 als auch die Besorgnis um Covid haben einen positiven sig. Effekt auf die Cross-Cutting Exposure zu T2 (p\<.001), wobei ersteres wieder nur als Stabilitätskoeffizient zu interpretieren ist.
+
+Auch für dieses Modell können wir Modellvorhersagen berechnen, hier zum Effekt der Cross-Cutting Exposure.
+
+```{r}
+avg_predictions(m1_cc, variables = c("worried_from_covid_total_01", "dCountry_W2")) |>
+  as_tibble()
+```
+
+Die Modellvorhersagen lassen sich dann auch wieder grafisch darstellen, wobei jedes Land einzeln dargestellt ist.
+
+```{r}
+avg_predictions(m1_cc, variables = c("worried_from_covid_total_01", "dCountry_W2")) |>
+  as_tibble() |>
+  ggplot(aes(
+    x = worried_from_covid_total_01, y = estimate,
+    color = dCountry_W2, group = dCountry_W2
+  )) +
+  geom_line(show.legend = FALSE) +
+  labs(x = "Covid-related worries T1", y = "Predicted cross-cutting exposure")
+```
+
+Der positive Effekt der Besorgnis über Covid auf die Cross-Cutting Exposure zu T2 ist im vorliegenden Modell in allen Ländern gleich, d.h. in allen Ländern ist der Anstieg identisch, was sich in den parallelen Linien zeigt. Die Länder unterscheiden sich hier nur durch die Varying Intercepts, d.h. durch die unterschiedliche Ausgangswerte. Diese Annahme können wir im nächsten Modell aufheben.
+
+### Voraussetzungen
+
+Auch bei Mehrebenenmodellen können wir die klassischen Regressions-Annahmen wie Linearität, Normalverteilung der Residuen, Homoskedastizität und Multikollinearität überprüfen. Hierfür nutzen wir wieder die `check_model()`-Funktion aus dem  `performance`-Paket.
+
+```{r}
+checks <- performance::check_model(m1_cc, panel = F)
+plot(checks)
+```
+
+## Varying Slopes
+
+### Modellschätzung
+Multilevel-Modelle können neben Varying Intercepts auch Varying Slopes enthalten. Kurz gesagt bilden Varying Slopes unterschiedliche Effekte einer Variable in den verschiedenen Gruppen (hier: in den Ländern) ab. In der nachfolgenden Analyse nehmen wir an, dass die Besorgnis über Covid und die Cross-Cutting Exposure zu T1 bei den Befragten nicht in allen Ländern den gleichen (positiven) Effekt auf die Cross-Cutting Exposure zu T2 hat. Die Varying Slopes fügen wir hinzu, indem wir die Variablen `worried_from_covid_total_01` und `cross_cutting_consumption_w1_01` in die Klammer `(1 | dCountry_W2)`, welche die Varying Intercepts kennzeichnet, aufnehmen.
+
+
+```{r}
+m2_cc <- lmer(cross_cutting_consumption_w2_01 ~ cross_cutting_consumption_w1_01 + worried_from_covid_total_01 +
+  (1 + cross_cutting_consumption_w1_01 + worried_from_covid_total_01 | dCountry_W2), d_zoizner)
+report::report_table(m2_cc)
+```
+::: callout-important
+
+In der `report_table()` werden leider die Varianzen bzw. Standardabweichungen der variierenden Slopes und Intercepts nicht gut gelabelt, daher greifen wir hier auf `summary()` zurück.
+
+```{r, purl = F}
+summary(m2_cc)
+```
+:::
+
+Das Modell unterstellt jetzt, dass es einen Gesamt-Intercept und Slopes über alle Befragten und Länder gibt sowie länderspezifische Abweichungen davon. Der länderspezifische Effekt ist dann die Summe aus Gesamt-Slope und länderspezifischen Abweichungen. Um diese zu schätzen, gibt es eine spezielle Funktion `avg_slopes()` mit dem `by` Parameter.
+
+```{r}
+marginaleffects::avg_slopes(m2_cc, variables = "worried_from_covid_total_01", by = "dCountry_W2") |>
+  as_tibble()
+```
+
+Wir sehen, dass sich die geschätzten Regressionskoeffizienten für die Besorgnis über Covid zwischen den Ländern unterscheiden. Auch für dieses Modell können wir die Modellvorhersagen berechnen und grafisch darstellen.
+
+```{r}
+avg_predictions(m2_cc, variables = c("worried_from_covid_total_01", "dCountry_W2")) |>
+  as_tibble() |>
+  ggplot(aes(
+    x = worried_from_covid_total_01, y = estimate,
+    color = dCountry_W2, group = dCountry_W2
+  )) +
+  geom_line(show.legend = FALSE) +
+  labs(x = "Covid-related worries T1", y = "Predicted cross-cutting exposure")
+```
+
+Im Unterschied zum vorherigen Modell sehen wir nun länderspezifische Ausgangswerte und Anstiege der Regressionsgeraden.
+
+### Modellvergleich Fixed vs. Varying Slopes
+
+Um unsere beiden Modelle zu vergleichen, können wir die `anova()`-Funktion nutzen, um einen Likelihood-Ratio-Test durchzuführen.
+
+```{r}
+anova(m1_cc, m2_cc)
+```
+
+Der Test zeigt an, dass das Varying Slopes Modell signifikant besser ist als das Varying Intercept Modell (p\<.001), d.h. es gibt signifikante Effektheterogenität bezüglich der Prädiktoren Cross-cutting Exposure zu T1 und Besorgnis über Covid.
+
+## Level-2 Prädiktoren
+
+Bislang haben wir mit `cross_cutting_consumption_w1_01` und `worried_from_covid_total_01` lediglich Level-1-Prädiktoren für unsere Analyse verwendet. Es ist aber ebenso möglich, einen Level-2-Prädiktor in das Modell aufzunehmen, um die Unterschiede zwischen den Gruppen zu erklären. So könnte der Schweregrad von Covid19 (die Anzahl der Fälle im Land) die Cross-Cutting Exposure beeinflussen. Deshalb fügen wir die Variable `confirmed_per_100k` in die Formel ein.
+
+```{r}
+m3_cc <- lmer(cross_cutting_consumption_w2_01 ~ cross_cutting_consumption_w1_01 + worried_from_covid_total_01 + confirmed_per_100k + (1 + cross_cutting_consumption_w1_01 + worried_from_covid_total_01 | dCountry_W2), d_zoizner)
+report::report_table(m3_cc)
+```
+
+Wie wir sehen, hängt die Anzahl der Fälle im Land nicht signifikant mit der Cross-Cutting Exposure zusammen (p >.05).
+
+::: callout-tip
+### Weiterführende Materialien
+
+Weitere detaillierte Beispiele mit R-Code und Daten finden sich in den Materialien zur Vorlesung [Anwendungsorientierte Analyseverfahren](https://stats.ifp.uni-mainz.de/ba-aa-vl/), u.a. zu
+
+-   Varying Intercept und Slope Modellen
+-   Modellvorhersagen und -visualisierungen
+:::
+
+## Glossar
+
+```{r, purl = F, echo = F}
+source("glossar.R")
+glossar("performance::icc|performance::check_model|lmer")
+```
+
+## Hausaufgabe
+
+1. Wie beeinflusst die Angst vor Covid (`worried_from_covid_total_01`) und das Alter der Befragten (`age`) auf Befragtenebene sowie die Anzahl der Fälle im Land (`confirmed_per_100k`) auf Länderebene die Nachrichtennutzung auf Social Media (`news_consumption_socialmedia_w2`)? 
+2. Schätzen Sie das ganze als REWB-Modell. Interpretieren Sie die Ergebnisse und vergleichen mit dem RE-Modell aus Aufgabe 1. 
