@@ -32,6 +32,7 @@ jobs:
           packages: |
             any::knitr
             any::rmarkdown
+            any::quarto
             any::tidyverse
             any::styler
             any::report
