@@ -38,6 +38,7 @@ jobs:
             any::styler
             any::report
             any::see
+            any::mediation
             any::lavaan
             any::lme4
             any::psych
