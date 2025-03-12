@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.42">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>1&nbsp; ANOVA und Regression – Fortgeschrittene Datenanalyse mit R</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./moderation-interaktionen.html" rel="next">
+<link href="./index.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-a1ee2e1b785e768319e814ae106737f1.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-cb42aa0a987c3f1ba5c91cb244d59b76.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./regression-anova.html">Regressionsmodelle</a></li><li class="breadcrumb-item"><a href="./regression-anova.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">ANOVA und Regression</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./"><strong>IfP</strong> | Stats <br><strong>Fortgeschrittene</strong> Datenanalyse <br> mit <strong>R</strong></a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Willkommen</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Regressionsmodelle</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./regression-anova.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">ANOVA und Regression</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./moderation-interaktionen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Moderationsanalyse</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./mediation-pfadmodelle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Mediationsanalyse und Pfadmodelle</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Längsschnitts - und Multilevelmodelle</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./lagged-crosslagged.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Lagged und Cross-Lagged Modelle</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./multilevel-panel.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Multilevel-Längsschnittanalyse</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./multilevel.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Multilevel-Modelle</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Faktorenanalyse</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorative-faktorenanalyse.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Explorative Faktorenanalyse</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./konfirmatorische-faktorenanalyse.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Konfirmatorische Faktorenanalyse</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./messinvarianz.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Messinvarianz</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./uebungen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Übungen</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./glossar.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Glossar</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./literatur.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Literatur</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Inhalt</h2>
+   
+  <ul>
+  <li><a href="#pakete-und-daten" id="toc-pakete-und-daten" class="nav-link active" data-scroll-target="#pakete-und-daten"><span class="header-section-number">1.1</span> Pakete und Daten</a></li>
+  <li><a href="#anova" id="toc-anova" class="nav-link" data-scroll-target="#anova"><span class="header-section-number">1.2</span> ANOVA</a>
+  <ul class="collapse">
+  <li><a href="#mittelwertvergleiche" id="toc-mittelwertvergleiche" class="nav-link" data-scroll-target="#mittelwertvergleiche"><span class="header-section-number">1.2.1</span> Mittelwertvergleiche</a></li>
+  <li><a href="#einfaktorielle-varianzanalyse" id="toc-einfaktorielle-varianzanalyse" class="nav-link" data-scroll-target="#einfaktorielle-varianzanalyse"><span class="header-section-number">1.2.2</span> Einfaktorielle Varianzanalyse</a></li>
+  <li><a href="#post-hoc-tests" id="toc-post-hoc-tests" class="nav-link" data-scroll-target="#post-hoc-tests"><span class="header-section-number">1.2.3</span> Post-Hoc-Tests</a></li>
+  <li><a href="#modellvorhersagen-und--visualisierung" id="toc-modellvorhersagen-und--visualisierung" class="nav-link" data-scroll-target="#modellvorhersagen-und--visualisierung"><span class="header-section-number">1.2.4</span> Modellvorhersagen und -visualisierung</a></li>
+  </ul></li>
+  <li><a href="#regression" id="toc-regression" class="nav-link" data-scroll-target="#regression"><span class="header-section-number">1.3</span> Regression</a>
+  <ul class="collapse">
+  <li><a href="#anova-regression" id="toc-anova-regression" class="nav-link" data-scroll-target="#anova-regression"><span class="header-section-number">1.3.1</span> ANOVA = Regression</a></li>
+  <li><a href="#multiple-regression" id="toc-multiple-regression" class="nav-link" data-scroll-target="#multiple-regression"><span class="header-section-number">1.3.2</span> Multiple Regression</a></li>
+  <li><a href="#modellvergleich" id="toc-modellvergleich" class="nav-link" data-scroll-target="#modellvergleich"><span class="header-section-number">1.3.3</span> Modellvergleich</a></li>
+  <li><a href="#modellannahmen" id="toc-modellannahmen" class="nav-link" data-scroll-target="#modellannahmen"><span class="header-section-number">1.3.4</span> Modellannahmen</a></li>
+  <li><a href="#modellvorhersagen" id="toc-modellvorhersagen" class="nav-link" data-scroll-target="#modellvorhersagen"><span class="header-section-number">1.3.5</span> Modellvorhersagen</a></li>
+  <li><a href="#modellvisualisierung" id="toc-modellvisualisierung" class="nav-link" data-scroll-target="#modellvisualisierung"><span class="header-section-number">1.3.6</span> Modellvisualisierung</a></li>
+  </ul></li>
+  <li><a href="#glossar" id="toc-glossar" class="nav-link" data-scroll-target="#glossar"><span class="header-section-number">1.4</span> Glossar</a></li>
+  <li><a href="#hausaufgabe" id="toc-hausaufgabe" class="nav-link" data-scroll-target="#hausaufgabe"><span class="header-section-number">1.5</span> Hausaufgabe</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content"><header id="title-block-header" class="quarto-title-block"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./regression-anova.html">Regressionsmodelle</a></li><li class="breadcrumb-item"><a href="./regression-anova.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">ANOVA und Regression</span></a></li></ol></nav><h1 class="title display-7"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">ANOVA und Regression</span></h1></header>
+
+<header id="title-block-header">
+
+
+</header>
+
+
+<section id="pakete-und-daten" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="pakete-und-daten"><span class="header-section-number">1.1</span> Pakete und Daten</h2>
+<p>Wir laden zunächst die notwendigen R-Pakete. Für die ANOVA und Regression brauchen wir das <code>marginaleffects</code>- , sowie das <code>tidyverse</code>- und das <code>report</code>-Paket. Für eine schönere Darstellung der Plots setzen wir außerdem das Theme auf <code>theme_minimal</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(marginaleffects)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(report)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(<span class="fu">theme_minimal</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Für die ANOVA und die Regression nutzen wir den SPSS-Datensatz <code>productplacement_anova.sav</code> und wir wandeln die Spalte <code>Placementhäufigkeit</code> in einen Faktor um, sodass es als kategoriale Variable behandelt wird. Der Datensatz enthält zwei Spalten: die Placementhäufigkeit und das Persuasionswissen.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>d_pp <span class="ot">&lt;-</span> haven<span class="sc">::</span><span class="fu">read_sav</span>(<span class="st">"data/productplacement_anova.sav"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(Placementhäufigkeit <span class="ot">=</span> <span class="fu">as_factor</span>(Placementhäufigkeit))</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>d_pp</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb3"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a># A tibble: 15 × 2</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  Placementhäufigkeit Persuasionswissen</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  &lt;fct&gt;                           &lt;dbl&gt;</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>1 0 Placements                        5</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>2 0 Placements                        7</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>3 0 Placements                        3</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>4 0 Placements                        4</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>5 0 Placements                        6</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a># ℹ 10 more rows</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Zudem laden wir dem SPSS-Datensatz <code>wahlabsicht_regression.sav</code>. Auch hier wird eine Spalte, in diesem Fall <code>Sex</code>, in einen Faktor umgewandelt, sodass es als kategoriale Variable behandelt wird. Der Datensatz enthält 8 Spalten: Bildung, Sex, Einkommen, Politische Wertorientierung, Wirksamkeitserwartung, Qualitätsmedien, Wahlabsicht und Boulevardmedien.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>d_wahl <span class="ot">&lt;-</span> haven<span class="sc">::</span><span class="fu">read_sav</span>(<span class="st">"data/wahlabsicht_regression.sav"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Sex =</span> <span class="fu">as_factor</span>(Sex)) <span class="sc">|&gt;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  haven<span class="sc">::</span><span class="fu">zap_labels</span>()</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>d_wahl</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb5"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a># A tibble: 156 × 8</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  Bildung Sex      Einkommen PolitischeWertorientierung Wirksamkeitserwartung</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    &lt;dbl&gt; &lt;fct&gt;        &lt;dbl&gt;                      &lt;dbl&gt;                 &lt;dbl&gt;</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>1       2 männlich         2                          5                     1</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>2       5 männlich         5                          5                     4</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>3       4 männlich         3                          3                     3</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>4       3 männlich         2                          4                     2</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>5       3 männlich         2                          1                     1</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a># ℹ 151 more rows</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a># ℹ 3 more variables: Qualitätsmedien &lt;dbl&gt;, Wahlabsicht &lt;dbl&gt;,</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>#   Boulevardmedien &lt;dbl&gt;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Variablenübersicht für Datensätze
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Aus einigen Datenformaten, vor allem SPSS-Dateien, lassen sich automatisch Variablenübersichten mit Variablen- und Wertelabels generieren. Die einfachste Funktion ist dafür <code>view_df()</code> aus dem <code>sjPlot</code>-Paket:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>sjPlot<span class="sc">::</span><span class="fu">view_df</span>(d_wahl)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="anova" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="anova"><span class="header-section-number">1.2</span> ANOVA</h2>
+<section id="mittelwertvergleiche" class="level3" data-number="1.2.1">
+<h3 data-number="1.2.1" class="anchored" data-anchor-id="mittelwertvergleiche"><span class="header-section-number">1.2.1</span> Mittelwertvergleiche</h3>
+<p>Mit der ANOVA überprüfen wir den Einfluss einer Gruppen- bzw. Faktor-Variable (kategorial, also nominal oder ordinal mit wenigen Ausprägungen) auf eine metrische Variable, wobei im Gegensatz zum t-Test mehr als zwei Gruppen verglichen werden können. (Für eine ausführlichere Erklärung siehe die Webseite für die BA-Datenanalyse: https://stats.ifp.uni-mainz.de/ba-datenanalyse/t-test.html).</p>
+<p>In unserem Experiment ist eine der zentralen Annahmen, dass sich die <code>Placementhäufigkeit</code> auf das <code>Persuasionswissen</code> auswirkt.</p>
+<p>Zunächst nutzen wir die Funktionen <code>group_by()</code> und <code>summarise()</code>, um Mittelwert, Standardabweichung und Fallzahl für die Variable <code>Persuasionswissen</code> basierend auf den Gruppen der Variable <code>Placementhäufigkeit</code> auszugeben.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>d_pp <span class="sc">|&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Placementhäufigkeit) <span class="sc">|&gt;</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">M =</span> <span class="fu">mean</span>(Persuasionswissen, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">SD =</span> <span class="fu">sd</span>(Persuasionswissen, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">n</span>()</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb8"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a># A tibble: 3 × 4</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  Placementhäufigkeit     M    SD     n</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  &lt;fct&gt;               &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt;</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>1 0 Placements            5 1.58      5</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>2 7 Placements           10 2.55      5</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>3 15 Placements          12 0.707     5</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Das Ergebnis zeigen, dass mit zunehmender Placementhäufigkeit der Mittelwert der Zielvariable steigt: Bei 0 Placements liegt er bei M=5, bei 7 Placements bei M=10 und bei 15 Placements bei M=12. Die Standardabweichungen variieren dabei, wobei die Gruppe mit 15 Placements die geringste Streuung aufweist.</p>
+</section>
+<section id="einfaktorielle-varianzanalyse" class="level3" data-number="1.2.2">
+<h3 data-number="1.2.2" class="anchored" data-anchor-id="einfaktorielle-varianzanalyse"><span class="header-section-number">1.2.2</span> Einfaktorielle Varianzanalyse</h3>
+<p>Die einfaktorielle Varianzanalyse dient dazu, Unterschiede in den Gruppenmittelwerten der abhängigen Variable <code>Persuasionswissen</code> basierend auf den Kategorien der faktoriellen Variable <code>Placementhäufigkeit</code> zu untersuchen.</p>
+<p><strong>Nullhypothese H0:</strong> Der Mittelwert des Persuasionswissen ist in allen Experimentalbedingungen gleich.</p>
+<p>Wir verwenden die Funktion <code>aov()</code>, um die einfaktorielle Varianzanalyse durchzuführen. Die grundlegende Syntax lautet: <code>aov(metrische_variable ~ gruppen_variable, data = Datenframe)</code>. Außerdem benutzen wir die <code>report_table()</code>-Funktion, um die Ergebnisse der Varianzanalyse in einer übersichtlichen Tabelle darzustellen. Diese enthält neben F-Wert, Freiheitsgraden und p-Wert auch das Effektstärkemaß Eta².</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>results_aov_pp <span class="ot">&lt;-</span> <span class="fu">aov</span>(Persuasionswissen <span class="sc">~</span> Placementhäufigkeit, <span class="at">data =</span> d_pp)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>results_aov_pp <span class="sc">|&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  report<span class="sc">::</span><span class="fu">report_table</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb10"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>Parameter           | Sum_Squares | df | Mean_Square |     F |      p | Eta2 |  Eta2 95% CI</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>-------------------------------------------------------------------------------------------</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>Placementhäufigkeit |      130.00 |  2 |       65.00 | 20.53 | &lt; .001 | 0.77 | [0.51, 1.00]</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>Residuals           |       38.00 | 12 |        3.17 |       |        |      |             </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>In unserem Fall zeigt sich, dass sich die Experimentalgruppen statistisch signifikant hinsichtlich ihres Persuasionswissens (F(2, 12) = 20.53, p &lt; .001) unterscheiden, wobei das Modell mit 77% Varianzaufklärung (Eta² = 0.77) eine große Vorhersagekraft des Antwortverhaltens hat. Wir wissen aber noch nicht, welche Gruppen sich unterschieden. Die Varianzanalyse gibt nur Aufschluss darüber, ob sich mindestens zwei der Gruppen signifikant voneinander unterscheiden. Vergleichen wir nur zwei Gruppen, reicht uns dieses Ergebnis schon. Vergleichen wir aber mehr als zwei Gruppen, wollen wir auch wissen, <em>welche</em> Gruppen sich signifikant voneinander unterscheiden. Hierfür benötigen wir Post-Hoc-Tests.</p>
+</section>
+<section id="post-hoc-tests" class="level3" data-number="1.2.3">
+<h3 data-number="1.2.3" class="anchored" data-anchor-id="post-hoc-tests"><span class="header-section-number">1.2.3</span> Post-Hoc-Tests</h3>
+<p>Um zu ermitteln, welche Gruppen sich signifikant voneinander unterscheiden, wird mithilfe von paarweisen Vergleichen und einer Alphafehler-Korrektur vorgegangen. In diesem Fall wird der Bonferroni-Korrekturansatz verwendet, der das Risiko von falsch positiven Ergebnissen verringert.</p>
+<p>Mit der Funktion <code>marginaleffects::avg_comparisons()</code> werden paarweise Vergleiche zwischen den Gruppen der Variable <code>Placementhäufigkeit</code> durchgeführt. Die Funktion nimmt das zuvor erstellte ANOVA-Modell als Grundlage, und durch die Option <code>p_adjust = "bonferroni"</code> wird sichergestellt, dass die p-Werte entsprechend angepasst werden, um den kumulierten Fehler durch mehrere Tests zu kontrollieren. Die Ergebnisse der paarweisen Vergleiche werden in einem übersichtlichen Format mithilfe von <code>as_tibble()</code> dargestellt.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>results_aov_pp <span class="sc">|&gt;</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  marginaleffects<span class="sc">::</span><span class="fu">avg_comparisons</span>(</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">variables =</span> <span class="fu">list</span>(Placementhäufigkeit <span class="ot">=</span> <span class="st">"pairwise"</span>),</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">p_adjust =</span> <span class="st">"bonferroni"</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb12"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a># A tibble: 3 × 10</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  term        contrast estimate std.error statistic p.value s.value predicted_lo</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  &lt;chr&gt;       &lt;chr&gt;       &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;        &lt;dbl&gt;</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>1 Placementh… mean(15…     7         1.13      6.22 1.49e-9   29.3             5</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>2 Placementh… mean(15…     2.00      1.13      1.78 2.27e-1    2.14           10</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>3 Placementh… mean(7 …     5         1.13      4.44 2.67e-5   15.2             5</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a># ℹ 2 more variables: predicted_hi &lt;dbl&gt;, predicted &lt;dbl&gt;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Der Post-hoc-Test zeigt, dass zwischen den Gruppen 0 Placements und 7 Placements sowie zwischen 7 Placements und 15 Placements signifikante Unterschiede im Persuasionswissen bestehen.</p>
+</section>
+<section id="modellvorhersagen-und--visualisierung" class="level3" data-number="1.2.4">
+<h3 data-number="1.2.4" class="anchored" data-anchor-id="modellvorhersagen-und--visualisierung"><span class="header-section-number">1.2.4</span> Modellvorhersagen und -visualisierung</h3>
+<p>Ähnlich wie bein dem eben verwendeten Post-Hoc-Test nutzen wir die Funktion <code>marginaleffects::avg_predictions()</code>. Der Unterschied liegt darin, dass hier Modellvorhersagen (<code>predictions</code>) anstelle von Vergleichen (<code>comparisons</code>) berechnet werden.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>results_aov_pp <span class="sc">|&gt;</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  marginaleffects<span class="sc">::</span><span class="fu">avg_predictions</span>(<span class="at">variables =</span> <span class="st">"Placementhäufigkeit"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb14"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a># A tibble: 3 × 8</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  Placementhäufigkeit estimate std.error statistic  p.value s.value conf.low</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  &lt;fct&gt;                  &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>1 0 Placements               5     0.796      6.28 3.33e-10    31.5     3.44</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>2 7 Placements              10     0.796     12.6  3.26e-36   118.      8.44</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>3 15 Placements             12     0.796     15.1  2.23e-51   168.     10.4 </span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a># ℹ 1 more variable: conf.high &lt;dbl&gt;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Wir sehen, dass das Persuasionswissen signifikant ansteigt, wenn die Anzahl der Placements erhöht wird. Dies deutet darauf hin, dass eine größere Anzahl an Placements mit einer höheren Wahrscheinlichkeit verbunden ist, dass die Rezipienten das Persuasionswissen aufnehmen. Die p-Werte sind alle signifikant (p &lt; 0.001).</p>
+<p>Für die Visualisierung erstellen wir nun mit <code>ggplot()</code> und <code>geom_pointrange()</code> eine Visualisierung der Mittelwerte und dazugehörigen Konfidenzintervalle von den Modellvorhersage pro Gruppe. Die x-Achse zeigt die Placementhäufigkeit, während die y-Achse die geschätzten Vorhersagen für das Persuasionswissen darstellt. Mit <code>geom_pointrange()</code> werden Punkte für die geschätzten Mittelwerte und vertikale Linien für die Konfidenzintervalle gezeichnet. So können wir erkennen, wie das Persuasionswissen je nach Placementhäufigkeit variiert und wie präzise diese Schätzungen sind.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>results_aov_pp <span class="sc">|&gt;</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  marginaleffects<span class="sc">::</span><span class="fu">avg_predictions</span>(<span class="at">variables =</span> <span class="st">"Placementhäufigkeit"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_tibble</span>() <span class="sc">|&gt;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> Placementhäufigkeit, <span class="at">y =</span> estimate,</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">ymin =</span> conf.low, <span class="at">ymax =</span> conf.high</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_pointrange</span>() <span class="sc">+</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Placementhäufigkeit"</span>, <span class="at">y =</span> <span class="st">"Vorhergesagtes Persuasionswissen"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="regression-anova_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="regression" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="regression"><span class="header-section-number">1.3</span> Regression</h2>
+<section id="anova-regression" class="level3" data-number="1.3.1">
+<h3 data-number="1.3.1" class="anchored" data-anchor-id="anova-regression"><span class="header-section-number">1.3.1</span> ANOVA = Regression</h3>
+<p>Wenn wir den Zusammenhang zwischen zwei metrischen Variablen, wie Placementhäufigkeit und Persuasionswissen, untersuchen wollen, können wir eine lineare Regression durchführen.</p>
+<p><strong>Nullhypothese H0</strong>: Die Placementhäufigkeit hat keinen Einfluss auf das Persuasionswissen.</p>
+<p>Lineare Regression werden mit der Funktion <code>lm()</code> durchgeführt, wobei die Syntax <code>lm(abhängige_variable ~ unabhängige_variable, data = Datenframe)</code> der von <code>aov()</code> für Mittelwertvergleiche entspricht. Wir führen die Regression durch und speichern das Ergebnis im Objekt <code>results_lm_pp</code>.</p>
+<p>Mit <code>summary()</code> erhalten wir eine Zusammenfassung des Regressionsmodells, die wichtige Informationen wie die Koeffizienten der unabhängigen Variablen, die Signifikanzniveaus (p-Werte), das Bestimmtheitsmaß (R-Quadrat) und weitere statistische Kennzahlen enthält.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>results_lm_pp <span class="ot">&lt;-</span> <span class="fu">lm</span>(Persuasionswissen <span class="sc">~</span> Placementhäufigkeit, <span class="at">data =</span> d_pp)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>results_lm_pp <span class="sc">|&gt;</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summary</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb17"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>Call:</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>lm(formula = Persuasionswissen ~ Placementhäufigkeit, data = d_pp)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>Residuals:</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>   Min     1Q Median     3Q    Max </span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    -3     -1      0      1      3 </span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>Coefficients:</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>                                 Estimate Std. Error t value Pr(&gt;|t|)    </span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>(Intercept)                        5.0000     0.7958   6.283 4.05e-05 ***</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>Placementhäufigkeit7 Placements    5.0000     1.1255   4.443 0.000803 ***</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>Placementhäufigkeit15 Placements   7.0000     1.1255   6.220 4.45e-05 ***</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>Residual standard error: 1.78 on 12 degrees of freedom</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>Multiple R-squared:  0.7738,    Adjusted R-squared:  0.7361 </span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>F-statistic: 20.53 on 2 and 12 DF,  p-value: 0.0001339</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Für einen Output in einer übersichtlichen Tabelle nutzen wir wieder <code>report_table()</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>results_lm_pp <span class="sc">|&gt;</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  report<span class="sc">::</span><span class="fu">report_table</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb19"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>Parameter                           | Coefficient |       95% CI | t(12) |      p | Std. Coef. | Std. Coef. 95% CI |   Fit</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>--------------------------------------------------------------------------------------------------------------------------</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>(Intercept)                         |        5.00 | [3.27, 6.73] |  6.28 | &lt; .001 |      -1.15 |    [-1.66, -0.65] |      </span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>Placementhäufigkeit [7 Placements]  |        5.00 | [2.55, 7.45] |  4.44 | &lt; .001 |       1.44 |    [ 0.74,  2.15] |      </span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>Placementhäufigkeit [15 Placements] |        7.00 | [4.55, 9.45] |  6.22 | &lt; .001 |       2.02 |    [ 1.31,  2.73] |      </span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>                                    |             |              |       |        |            |                   |      </span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>AIC                                 |             |              |       |        |            |                   | 64.51</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>AICc                                |             |              |       |        |            |                   | 68.51</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>BIC                                 |             |              |       |        |            |                   | 67.34</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>R2                                  |             |              |       |        |            |                   |  0.77</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>R2 (adj.)                           |             |              |       |        |            |                   |  0.74</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>Sigma                               |             |              |       |        |            |                   |  1.78</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Wir erkennen am 95%-CI, das nicht die Null enthält, oder am p-Wert (p &lt; .001), dass die Placementhäufigkeit das Persuasionswissen statistisch signifikant vorhersagt. Der standardisierte Regressionskoeffizient entspricht für 7 Placements r = 1.44 und für 15 Placements r = 2.02. Basierend auf Cohen (1988) kann man also bei beiden von einem starken Effekt sprechen. Das R-Quadrat beträgt einen Wert von R²=.77, d.h. unser Regressionsmodell kann 77% der Varianz in der Variable Persuasionswissen vorhersagen.</p>
+<p>Wir verwenden wieder die Funktion <code>marginaleffects::avg_predictions()</code> zur Berechnung der durchschnittlichen Vorhersagen für das Persuasionswissen in Bezug auf die Placementhäufigkeit. Diese mal aber basierend auf dem Regressionsmodell <code>results_lm_pp</code>. Diese Vorhersagen geben Aufschluss darüber, wie sich das Persuasionswissen im Durchschnitt verändert, wenn sich die Placementhäufigkeit ändert, und helfen dabei, die Auswirkungen davon anschaulich zu verstehen.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>results_lm_pp <span class="sc">|&gt;</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  marginaleffects<span class="sc">::</span><span class="fu">avg_predictions</span>(<span class="at">variables =</span> <span class="st">"Placementhäufigkeit"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb21"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a># A tibble: 3 × 8</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  Placementhäufigkeit estimate std.error statistic  p.value s.value conf.low</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  &lt;fct&gt;                  &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>1 0 Placements               5     0.796      6.28 3.33e-10    31.5     3.44</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>2 7 Placements              10     0.796     12.6  3.26e-36   118.      8.44</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>3 15 Placements             12     0.796     15.1  2.23e-51   168.     10.4 </span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a># ℹ 1 more variable: conf.high &lt;dbl&gt;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Auch hier zeigt der Output, dass das Persuasionswissen im Durchschnitt signifikant ansteigt, wenn die Anzahl der Placements erhöht wird.</p>
+</section>
+<section id="multiple-regression" class="level3" data-number="1.3.2">
+<h3 data-number="1.3.2" class="anchored" data-anchor-id="multiple-regression"><span class="header-section-number">1.3.2</span> Multiple Regression</h3>
+<p>Mit der <code>lm()-Funktion</code> können wir auch multiple Regressionen berechnen, bei denen es mehr als eine unabhängige Variable gibt. Die Syntax ist identisch, es werden einfach die Variablen mit <code>+</code> verbunden.</p>
+<p>Hier benutzen wir den Datensatz der Wahlabsicht und schauen, ob die Wahlabsicht vom Sex, Bildung, Einkommen, Politische Wertorientierung, Wirksamkeitserwartung beeinflusst wird. Wir führen die Multiple Regression durch und speichern das Ergebnis im Objekt <code>results_wahl_1</code> um anschließend wieder <code>report_table()</code>zu verwenden.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>results_wahl_1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  Wahlabsicht <span class="sc">~</span> Sex <span class="sc">+</span> Bildung <span class="sc">+</span> Einkommen <span class="sc">+</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    PolitischeWertorientierung <span class="sc">+</span> Wirksamkeitserwartung,</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> d_wahl</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>results_wahl_1 <span class="sc">|&gt;</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>  report<span class="sc">::</span><span class="fu">report_table</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb23"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>Parameter                  | Coefficient |        95% CI | t(150) |      p | Std. Coef. | Std. Coef. 95% CI |    Fit</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>--------------------------------------------------------------------------------------------------------------------</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>(Intercept)                |        0.99 | [ 0.40, 1.58] |   3.32 | 0.001  |   6.91e-03 |     [-0.13, 0.14] |       </span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>Sex [weiblich]             |       -0.04 | [-0.35, 0.26] |  -0.27 | 0.789  |      -0.05 |     [-0.43, 0.33] |       </span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>Bildung                    |        0.19 | [ 0.09, 0.28] |   3.76 | &lt; .001 |       0.26 |     [ 0.12, 0.40] |       </span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>Einkommen                  |        0.09 | [-0.01, 0.18] |   1.80 | 0.074  |       0.12 |     [-0.01, 0.26] |       </span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>PolitischeWertorientierung |        0.03 | [-0.07, 0.13] |   0.55 | 0.581  |       0.04 |     [-0.10, 0.17] |       </span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>Wirksamkeitserwartung      |        0.40 | [ 0.27, 0.53] |   6.29 | &lt; .001 |       0.44 |     [ 0.30, 0.57] |       </span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>                           |             |               |        |        |            |                   |       </span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>AIC                        |             |               |        |        |            |                   | 316.56</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>AICc                       |             |               |        |        |            |                   | 317.32</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>BIC                        |             |               |        |        |            |                   | 337.91</span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>R2                         |             |               |        |        |            |                   |   0.36</span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>R2 (adj.)                  |             |               |        |        |            |                   |   0.34</span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>Sigma                      |             |               |        |        |            |                   |   0.65</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Wir erkennen, dass nur die Bildung und die Wirksamkeitserwartung die Wahlabsicht beeinflussen. Bei der Bildung zeigt sich ein positiver Einfluss mit einem Koeffizienten von 0.19, was bedeutet, dass jeder zusätzliche Punkt in der Bildung zu einem Anstieg der Wahlabsicht um 0.19 Skalenpunkte führt. Dieser Effekt ist signifikant (p &lt; 0.001). Die Wirksamkeitserwartung hat einen noch stärkeren Einfluss auf die Wahlabsicht, mit einem Koeffizienten von 0.40. Das bedeutet, dass ein höheres Maß an Wirksamkeitserwartung mit einem Anstieg der Wahlabsicht um 0.40 Skalenpunkte verbunden ist. Auch dieser Effekt ist signifikant (p &lt; 0.001). Im Gegensatz dazu zeigen die Variablen Sex, Einkommen und politische Wertorientierung keinen signifikanten Einfluss auf die Wahlabsicht, da ihre p-Werte über 0.05 liegen. Die Vorhersagequalität unseres Modells liegt bei einem R-Quadrat von R²=.34, was darauf hinweist, dass die Prädiktoren zusammen etwa 34% der Varianz der Wahlabsicht erklären.</p>
+<p>Nun führen wir wieder eine multiple Regressionen durch, aber ergänzen noch Qualitätsmedien und Boulevardmedien als Variablen.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>results_wahl_2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  Wahlabsicht <span class="sc">~</span> Sex <span class="sc">+</span> Bildung <span class="sc">+</span> Einkommen <span class="sc">+</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>    PolitischeWertorientierung <span class="sc">+</span> Wirksamkeitserwartung <span class="sc">+</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>    Qualitätsmedien <span class="sc">+</span> Boulevardmedien,</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">data =</span> d_wahl</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>results_wahl_2 <span class="sc">|&gt;</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>  report<span class="sc">::</span><span class="fu">report_table</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb25"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>Parameter                  | Coefficient |         95% CI | t(148) |      p | Std. Coef. | Std. Coef. 95% CI |    Fit</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>---------------------------------------------------------------------------------------------------------------------</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>(Intercept)                |        1.94 | [ 1.26,  2.62] |   5.62 | &lt; .001 |      -0.02 |    [-0.13,  0.10] |       </span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>Sex [weiblich]             |        0.09 | [-0.16,  0.35] |   0.73 | 0.466  |       0.12 |    [-0.20,  0.44] |       </span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>Bildung                    |        0.15 | [ 0.06,  0.23] |   3.45 | &lt; .001 |       0.20 |    [ 0.09,  0.32] |       </span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>Einkommen                  |        0.02 | [-0.07,  0.10] |   0.42 | 0.674  |       0.03 |    [-0.09,  0.14] |       </span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>PolitischeWertorientierung |    3.12e-03 | [-0.08,  0.09] |   0.07 | 0.943  |   4.17e-03 |    [-0.11,  0.12] |       </span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>Wirksamkeitserwartung      |        0.21 | [ 0.10,  0.33] |   3.60 | &lt; .001 |       0.23 |    [ 0.10,  0.36] |       </span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>Qualitätsmedien            |        0.19 | [ 0.11,  0.28] |   4.36 | &lt; .001 |       0.26 |    [ 0.14,  0.38] |       </span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>Boulevardmedien            |       -0.22 | [-0.29, -0.15] |  -6.01 | &lt; .001 |      -0.39 |    [-0.52, -0.26] |       </span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>                           |             |                |        |        |            |                   |       </span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>AIC                        |             |                |        |        |            |                   | 262.68</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>AICc                       |             |                |        |        |            |                   | 263.92</span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a>BIC                        |             |                |        |        |            |                   | 290.13</span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a>R2                         |             |                |        |        |            |                   |   0.56</span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a>R2 (adj.)                  |             |                |        |        |            |                   |   0.54</span>
+<span id="cb25-17"><a href="#cb25-17" aria-hidden="true" tabindex="-1"></a>Sigma                      |             |                |        |        |            |                   |   0.54</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Hier sehen wir, dass die Bildung, die Wirksamkeitserwartung, wie auch Qualitätsmedien und Boulevardmedien statistisch signifikant die Wahlabsicht beeinflussen (p &lt; 0.001).</p>
+</section>
+<section id="modellvergleich" class="level3" data-number="1.3.3">
+<h3 data-number="1.3.3" class="anchored" data-anchor-id="modellvergleich"><span class="header-section-number">1.3.3</span> Modellvergleich</h3>
+<p>Ob Modell 2 signifikant mehr Varianz im politischen Wissen erklären kann als Modell 1, zeigt der partielle F-Test, der mit der <code>anova()</code>-Funktion durchgeführt wird. Funktionsargumente sind die beiden Modelle, die verglichen werden sollen.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(results_wahl_1, results_wahl_2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb27"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>Analysis of Variance Table</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>Model 1: Wahlabsicht ~ Sex + Bildung + Einkommen + PolitischeWertorientierung + </span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>    Wirksamkeitserwartung</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>Model 2: Wahlabsicht ~ Sex + Bildung + Einkommen + PolitischeWertorientierung + </span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>    Wirksamkeitserwartung + Qualitätsmedien + Boulevardmedien</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  Res.Df    RSS Df Sum of Sq      F    Pr(&gt;F)    </span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>1    150 63.528                                  </span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>2    148 43.836  2    19.692 33.242 1.192e-12 ***</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>---</span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Die Residualvarianz von Modell 2 ist signifikant kleiner, bzw. die erklärte Varianz signifikant größer als bei Modell 1. Durch das Hinzufügen der Variablen Qualitätsmedien und Boulevardmedien hat sich die Modellgüte deutlich verbessert.</p>
+</section>
+<section id="modellannahmen" class="level3" data-number="1.3.4">
+<h3 data-number="1.3.4" class="anchored" data-anchor-id="modellannahmen"><span class="header-section-number">1.3.4</span> Modellannahmen</h3>
+<p>Für die Prüfung der klassischen OLS-Annahmen wie Linearität, Normalverteilung der Residuen, Homoskedastizität und Multikollinearität gibt es im <code>performance</code>-Paket eine Sammelfunktion, die schlicht <code>check_model()</code> heißt.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>checks <span class="ot">&lt;-</span> performance<span class="sc">::</span><span class="fu">check_model</span>(results_wahl_2, <span class="at">panel =</span> F)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(checks)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb29"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>$PP_CHECK</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="regression-anova_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb30"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>$NCV</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="regression-anova_files/figure-html/unnamed-chunk-16-2.png" class="img-fluid figure-img" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb31"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>$HOMOGENEITY</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="regression-anova_files/figure-html/unnamed-chunk-16-3.png" class="img-fluid figure-img" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb32"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>$OUTLIERS</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="regression-anova_files/figure-html/unnamed-chunk-16-4.png" class="img-fluid figure-img" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb33"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>$VIF</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="regression-anova_files/figure-html/unnamed-chunk-16-5.png" class="img-fluid figure-img" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb34"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>$QQ</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="regression-anova_files/figure-html/unnamed-chunk-16-6.png" class="img-fluid figure-img" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="modellvorhersagen" class="level3" data-number="1.3.5">
+<h3 data-number="1.3.5" class="anchored" data-anchor-id="modellvorhersagen"><span class="header-section-number">1.3.5</span> Modellvorhersagen</h3>
+<p>Um aus Regressionsmodellen in R Vorhersagen zu generieren, benutzen wir die Funktion <code>avg_predictions()</code> aus dem <code>marginaleffects</code>-Paket. Dabei erhalten wir für eine oder mehrere Prädiktorvariablen vorhergesagte Werte des Outcomes. Dabei werden für kategorielle Variablen die Vorhersagen für jede Ausprägung aggregiert, für metrische über (typische) Einzelwerte.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>results_wahl_2 <span class="sc">|&gt;</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>  marginaleffects<span class="sc">::</span><span class="fu">avg_predictions</span>(<span class="at">variables =</span> <span class="st">"Boulevardmedien"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_tibble</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<div class="sourceCode" id="cb36"><pre class="sourceCode txt code-with-copy"><code class="sourceCode default"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a># A tibble: 5 × 8</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>  Boulevardmedien estimate std.error statistic   p.value s.value conf.low</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>            &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>1               5     2.64    0.104       25.3 1.42e-141    468.     2.43</span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>2               1     3.52    0.0685      51.4 0            Inf      3.39</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>3               4     2.86    0.0723      39.5 0            Inf      2.72</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>4               3     3.08    0.0483      63.8 0            Inf      2.98</span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>5               2     3.30    0.0464      71.1 0            Inf      3.21</span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a># ℹ 1 more variable: conf.high &lt;dbl&gt;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</div>
+<p>Die Tabelle zeigt die Vorhersagen für die Wahlabsicht in Abhängigkeit von der Nutzung von Boulevardmedien. Für jede Ausprägung der Boulevardmediennutzung wird ein geschätzter Wert der Wahlabsicht (<code>estimate</code>) angegeben. Diese Schätzungen werden mit dem jeweiligen Standardfehler (<code>std.error</code>), der Teststatistik (<code>statistic</code>) und dem p-Wert (<code>p.value</code>) präsentiert. Die Konfidenzintervalle (<code>conf.low</code>, <code>conf.high</code>) geben an, in welchem Bereich der wahre Wert der Wahlabsicht mit hoher Wahrscheinlichkeit liegt. Höhere Boulevardmediennutzung ist mit einer niedrigeren Wahlabsicht verbunden.</p>
+</section>
+<section id="modellvisualisierung" class="level3" data-number="1.3.6">
+<h3 data-number="1.3.6" class="anchored" data-anchor-id="modellvisualisierung"><span class="header-section-number">1.3.6</span> Modellvisualisierung</h3>
+<p>Die Vorhersagen für metrische Prädiktoren lassen sich am besten als Regressionsgerade samt Konfidenzband visualisieren, d.h. <code>geom_line()</code> und <code>geom_ribbon()</code>. Das Konfidenzband wird fast transparent dargestellt (<code>alpha = .1</code>). Auf der X-Achse ist die Prädiktorvariable, auf der Y-Achse die vorhergesagten Werte.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>results_wahl_2 <span class="sc">|&gt;</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>  marginaleffects<span class="sc">::</span><span class="fu">avg_predictions</span>(<span class="at">variables =</span> <span class="st">"Boulevardmedien"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_tibble</span>() <span class="sc">|&gt;</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> Boulevardmedien, <span class="at">y =</span> estimate,</span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">ymin =</span> conf.low, <span class="at">ymax =</span> conf.high</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">+</span></span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>() <span class="sc">+</span></span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="at">alpha =</span> .<span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Nutzungshäufigkeit Boulevardmedien"</span>, <span class="at">y =</span> <span class="st">"Vorhergesagte Wahlabsicht"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="regression-anova_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid figure-img" style="width:100.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Weiterführende Materialien
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Weitere detaillierte Beispiele mit R-Code und Daten finden sich in den Materialien zur Vorlesung <a href="https://stats.ifp.uni-mainz.de/ba-aa-vl/">Anwendungsorientierte Analyseverfahren</a>, u.a. zu</p>
+<ul>
+<li>kategoriellen und metrischen Prädiktorvariablen</li>
+<li>multipler Regression und Regressionsannahmen</li>
+<li>Modellvorhersagen und -visualisierungen</li>
+</ul>
+</div>
+</div>
+</section>
+</section>
+<section id="glossar" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="glossar"><span class="header-section-number">1.4</span> Glossar</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Funktion</th>
+<th style="text-align: left;">Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">anova</td>
+<td style="text-align: left;">Modellvergleich und partieller F-Test</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">lm</td>
+<td style="text-align: left;">Lineares Regressionsmodell schätzen</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">marginaleffects::avg_comparisons</td>
+<td style="text-align: left;">Modellkontraste und Posthoc-Tests berechnen</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">marginaleffects::avg_predictions</td>
+<td style="text-align: left;">Modellvorhersagen berechnen</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">performance::check_performance</td>
+<td style="text-align: left;">Modellannahmen prüfen</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="hausaufgabe" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="hausaufgabe"><span class="header-section-number">1.5</span> Hausaufgabe</h2>
+<p>In einer Studie wurde untersucht, welche Merkmale Vorurteile gegenüber Asylsuchenden bei Befragten beeinflussen (Datensatz <code>asyl.sav</code>).</p>
+<ol type="1">
+<li>Untersuchen sie den Zusammenhang von Demographie (Geschlecht, Alter, Bildung), politischen Überzeugungen (allg. politisches Interesse, Ideologie (links-rechts-Selbsteinschätzung, Autoritarismus, Wahrnehmung negativer Mediendarstellungen) und Vorurteilen gegenüber Asylsuchenden.</li>
+<li>Identifizieren, interpretieren und visualisieren sie den stärksten Effekt aus dem Regressionsmodell.</li>
+</ol>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+});
+</script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./index.html" class="pagination-link" aria-label="Willkommen">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Willkommen</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./moderation-interaktionen.html" class="pagination-link" aria-label="Moderationsanalyse">
+        <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Moderationsanalyse</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<footer class="footer">
+  <div class="nav-footer">
+    <div class="nav-footer-left">
+      &nbsp;
+    </div>   
+    <div class="nav-footer-center">
+<p>Institut für Publizistik, Johannes Gutenberg-Universität Mainz | <a href="https://www.uni-mainz.de/impressum/">Impressum</a> | <a href="https://www.uni-mainz.de/datenschutz/">Datenschutz</a></p>
+</div>
+    <div class="nav-footer-right">
+      &nbsp;
+    </div>
+  </div>
+</footer>
+
+
+
+
+</body></html>
