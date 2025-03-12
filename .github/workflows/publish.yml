@@ -33,6 +33,7 @@ jobs:
             any::knitr
             any::rmarkdown
             any::tidyverse
+            any::styler
             any::report
             any::lavaan
             any::lme4
